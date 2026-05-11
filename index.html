@@ -59,8 +59,8 @@
 
     /* ── HERO ─────────────────────────────────────────── */
     #homePage{min-height:calc(100vh - 65px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;background:radial-gradient(ellipse at 50% -10%,rgba(224,76,47,.15) 0%,transparent 65%);position:relative;overflow:hidden}
-    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3;pointer-events:none;z-index:0}
-    #homePage > *:not(.hero-grid){position:relative;z-index:1}
+    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3;pointer-events:none!important;z-index:0}
+    .hero-tag,.hero-title,.hero-sub,.hero-ctas,.features{position:relative;z-index:2}
     .hero-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--fm);font-size:11px;letter-spacing:2px;color:var(--accent);border:1px solid var(--accentl);padding:5px 14px;border-radius:20px;margin-bottom:24px;text-transform:uppercase;background:var(--accentl)}
     .hero-title{font-size:clamp(40px,8vw,88px);font-weight:900;line-height:1.0;letter-spacing:-3px;margin-bottom:20px;position:relative}
     .hero-title .line2{color:var(--accent)}

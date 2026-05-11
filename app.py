@@ -11,4 +11,4 @@ CORS(app)
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 EMAIL_SENDER   = "smart.codemark.attendance@gmail.com"
-EMAIL_PASSWORD = "bfsq fiaj felf
+EMAIL_PASSWORD = "bfsq fiaj felf pcwy"

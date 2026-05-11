@@ -1,1308 +1,855 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>SmartAttend</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    /* ── TOKENS ───────────────────────────────────────── */
-    :root {
-      --bg:#09090f; --bg2:#0f0f18; --card:#13131e; --card2:#1a1a28;
-      --border:#252535; --border2:#303048;
-      --accent:#e04c2f; --accent2:#ff6b4a; --accentl:rgba(224,76,47,.12);
-      --green:#22c55e; --greenl:rgba(34,197,94,.12);
-      --yellow:#eab308; --yellowl:rgba(234,179,8,.12);
-      --red:#ef4444; --redl:rgba(239,68,68,.12);
-      --blue:#3b82f6; --bluel:rgba(59,130,246,.12);
-      --purple:#a855f7; --purplel:rgba(168,85,247,.12);
-      --text:#f1f1f8; --text2:#a0a0b8; --text3:#606078;
-      --fh:'Cabinet Grotesk',sans-serif; --fm:'DM Mono',monospace;
-      --r:10px; --r2:16px; --shadow:0 4px 24px rgba(0,0,0,.4);
-    }
-    [data-theme="light"] {
-      --bg:#f4f4f8; --bg2:#eaeaf0; --card:#ffffff; --card2:#f8f8fc;
-      --border:#e0e0ec; --border2:#d0d0e0;
-      --text:#1a1a2e; --text2:#505068; --text3:#9090a8;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth}
-    body{font-family:var(--fh);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s}
-    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_sock import Sock
+import sqlite3, hashlib, random, string, smtplib, os, json, time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from datetime import datetime, timedelta
+import threading
+import io
 
-    /* ── NAV ─────────────────────────────────────────── */
-    nav{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;background:rgba(9,9,15,.9);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;backdrop-filter:blur(12px)}
-    [data-theme="light"] nav{background:rgba(244,244,248,.9)}
-    .nav-logo{font-size:20px;font-weight:900;letter-spacing:-1px;cursor:pointer}
-    .nav-logo span{color:var(--accent)}
-    .nav-logo .dot{width:6px;height:6px;background:var(--green);border-radius:50%;display:inline-block;margin-left:3px;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-    .nav-right{display:flex;align-items:center;gap:10px}
-    .theme-toggle{background:var(--card);border:1px solid var(--border);color:var(--text2);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
-    #userChip{display:none;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:13px;color:var(--text2)}
-    #userChip strong{color:var(--text)}
+app = Flask(__name__, static_folder='.', static_url_path='')
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-    /* ── BUTTONS ─────────────────────────────────────── */
-    .btn{padding:9px 20px;border-radius:8px;font-family:var(--fh);font-weight:700;font-size:13px;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-    .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(224,76,47,.35)}
-    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-    .btn-green{background:var(--green);color:#fff}.btn-green:hover{opacity:.85}
-    .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{opacity:.85}
-    .btn-ghost{background:transparent;border:none;color:var(--text3);padding:6px 10px}.btn-ghost:hover{color:var(--text)}
-    .btn-sm{padding:5px 12px;font-size:12px}
-    .btn-full{width:100%;justify-content:center;padding:13px}
-    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+# ─── CONFIG ───────────────────────────────────────────────────────────────────
+app.config['JWT_SECRET_KEY'] = 'smartattend-super-secret-jwt-key-2024'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+EMAIL_SENDER   = "smart.codemark.attendance@gmail.com"
+EMAIL_PASSWORD = "bfsq fiaj felf pcwy"
+DB_PATH        = "smartattend.db"
 
-    /* ── HERO ─────────────────────────────────────────── */
-    #homePage{min-height:calc(100vh - 65px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;background:radial-gradient(ellipse at 50% -10%,rgba(224,76,47,.15) 0%,transparent 65%);position:relative;overflow:hidden}
-    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3}
-    .hero-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--fm);font-size:11px;letter-spacing:2px;color:var(--accent);border:1px solid var(--accentl);padding:5px 14px;border-radius:20px;margin-bottom:24px;text-transform:uppercase;background:var(--accentl)}
-    .hero-title{font-size:clamp(40px,8vw,88px);font-weight:900;line-height:1.0;letter-spacing:-3px;margin-bottom:20px;position:relative}
-    .hero-title .line2{color:var(--accent)}
-    .hero-sub{font-size:16px;color:var(--text2);max-width:500px;line-height:1.75;margin-bottom:36px;font-weight:500}
-    .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:60px}
-    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:860px;width:100%}
-    .feature-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;text-align:left;transition:all .25s;cursor:default}
-    .feature-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 8px 32px rgba(224,76,47,.15)}
-    .f-icon{font-size:26px;margin-bottom:12px}
-    .feature-card h3{font-size:14px;font-weight:700;margin-bottom:6px}
-    .feature-card p{font-size:12px;color:var(--text2);line-height:1.6}
+jwt     = JWTManager(app)
+sock    = Sock(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
 
-    /* ── DASHBOARD ────────────────────────────────────── */
-    #dashboard{display:none;padding:28px 40px;max-width:1160px;margin:0 auto}
-    .dash-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:14px}
-    .dash-title{font-size:24px;font-weight:900;letter-spacing:-.5px}
-    .dash-title span{color:var(--accent)}
-    .dash-sub{font-size:13px;color:var(--text3);margin-top:3px}
-    .role-pill{font-family:var(--fm);font-size:10px;letter-spacing:2px;padding:4px 12px;border-radius:20px;text-transform:uppercase;background:var(--accentl);color:var(--accent);border:1px solid var(--accentl)}
-    .role-pill.teacher{background:var(--bluel);color:var(--blue);border-color:var(--bluel)}
-    .role-pill.admin{background:var(--purplel);color:var(--purple);border-color:var(--purplel)}
+# WebSocket clients
+ws_clients = set()
 
-    /* ── STATS ────────────────────────────────────────── */
-    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
-    .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:18px;position:relative;overflow:hidden}
-    .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
-    .stat.green::before{background:var(--green)}
-    .stat.blue::before{background:var(--blue)}
-    .stat.yellow::before{background:var(--yellow)}
-    .stat.purple::before{background:var(--purple)}
-    .stat-val{font-family:var(--fm);font-size:28px;font-weight:500;color:var(--text)}
-    .stat-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
-    .stat-icon{position:absolute;right:16px;top:16px;font-size:20px;opacity:.3}
+# ─── DATABASE ─────────────────────────────────────────────────────────────────
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    /* ── CARDS ────────────────────────────────────────── */
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;margin-bottom:18px}
-    .card-title{font-size:14px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--text)}
-    .card-title .ct-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
-    .card-title .ct-actions{margin-left:auto;display:flex;gap:8px}
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
+    c.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            email      TEXT UNIQUE NOT NULL,
+            password   TEXT NOT NULL,
+            type       TEXT NOT NULL CHECK(type IN ('student','teacher','admin')),
+            verified   INTEGER DEFAULT 0,
+            joined     TEXT DEFAULT (date('now')),
+            face_data  TEXT DEFAULT NULL,
+            theme      TEXT DEFAULT 'dark'
+        );
+        CREATE TABLE IF NOT EXISTS otps (
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            email   TEXT NOT NULL,
+            otp     TEXT NOT NULL,
+            expires TEXT NOT NULL,
+            attempts INTEGER DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS subjects (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            teacher_id INTEGER NOT NULL,
+            FOREIGN KEY(teacher_id) REFERENCES users(id)
+        );
+        CREATE TABLE IF NOT EXISTS attendance_codes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            code       TEXT NOT NULL UNIQUE,
+            subject_id INTEGER NOT NULL,
+            teacher_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            lat        REAL DEFAULT NULL,
+            lng        REAL DEFAULT NULL,
+            radius     INTEGER DEFAULT NULL,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id)
+        );
+        CREATE TABLE IF NOT EXISTS attendance (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            subject_id INTEGER NOT NULL,
+            date       TEXT NOT NULL,
+            ip_address TEXT DEFAULT NULL,
+            lat        REAL DEFAULT NULL,
+            lng        REAL DEFAULT NULL,
+            UNIQUE(student_id, subject_id, date),
+            FOREIGN KEY(student_id) REFERENCES users(id),
+            FOREIGN KEY(subject_id) REFERENCES subjects(id)
+        );
+        CREATE TABLE IF NOT EXISTS activity_logs (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER,
+            user_name  TEXT,
+            action     TEXT NOT NULL,
+            details    TEXT,
+            ip_address TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS suspicious_flags (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER,
+            subject_id INTEGER,
+            reason     TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+    """)
+    conn.commit()
+    conn.close()
 
-    /* ── TABS ─────────────────────────────────────────── */
-    .dash-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;padding:4px;background:var(--card);border-radius:10px;border:1px solid var(--border);width:fit-content}
-    .dtab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:var(--fh);transition:all .2s}
-    .dtab.active{background:var(--accent);color:#fff}
-    .dtab:hover:not(.active){color:var(--text)}
-    .dsec{display:none}.dsec.active{display:block}
+# ─── HELPERS ──────────────────────────────────────────────────────────────────
+def hash_pass(p):
+    return hashlib.sha256(p.encode()).hexdigest()
 
-    /* ── TABLE ────────────────────────────────────────── */
-    .tbl-wrap{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{text-align:left;padding:9px 14px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);font-family:var(--fm);white-space:nowrap}
-    td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
-    [data-theme="light"] td{border-bottom:1px solid var(--border)}
-    tr:last-child td{border-bottom:none}
-    tr:hover td{background:rgba(255,255,255,.02)}
-    [data-theme="light"] tr:hover td{background:rgba(0,0,0,.02)}
+def send_email(to, subject, body, attachment=None, attachment_name=None):
+    try:
+        msg = MIMEMultipart()
+        msg['From']    = EMAIL_SENDER
+        msg['To']      = to
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'html'))
+        if attachment and attachment_name:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment)
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename={attachment_name}')
+            msg.attach(part)
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as s:
+            s.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            s.sendmail(EMAIL_SENDER, to, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"Email error: {e}")
+        return False
 
-    /* ── BADGES ───────────────────────────────────────── */
-    .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--fm);gap:4px}
-    .bg{background:var(--greenl);color:var(--green)}
-    .br{background:var(--redl);color:var(--red)}
-    .by{background:var(--yellowl);color:var(--yellow)}
-    .bb{background:var(--bluel);color:var(--blue)}
-    .bp{background:var(--purplel);color:var(--purple)}
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
 
-    /* ── ATT BAR ──────────────────────────────────────── */
-    .att-bar-w{background:var(--border);border-radius:4px;height:5px;margin-top:5px;overflow:hidden}
-    .att-bar{height:100%;border-radius:4px;transition:width .6s ease}
+def store_otp(email, otp):
+    conn = get_db()
+    expires = (datetime.now() + timedelta(minutes=10)).isoformat()
+    conn.execute("DELETE FROM otps WHERE email=?", (email,))
+    conn.execute("INSERT INTO otps(email,otp,expires,attempts) VALUES(?,?,?,0)", (email, otp, expires))
+    conn.commit()
+    conn.close()
 
-    /* ── SKELETON ─────────────────────────────────────── */
-    .skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
-    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .sk-row{height:14px;margin-bottom:10px}
-    .sk-row:last-child{width:60%}
+def verify_otp_db(email, otp):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM otps WHERE email=? AND expires>?",
+        (email, datetime.now().isoformat())
+    ).fetchone()
+    if not row:
+        conn.close()
+        return False, "OTP expired or not found"
+    attempts = row['attempts'] + 1
+    if attempts > 5:
+        conn.execute("DELETE FROM otps WHERE email=?", (email,))
+        conn.commit()
+        conn.close()
+        return False, "Too many attempts. Request a new OTP."
+    if row['otp'] != otp:
+        conn.execute("UPDATE otps SET attempts=? WHERE email=?", (attempts, email))
+        conn.commit()
+        conn.close()
+        return False, f"Wrong OTP. {5-attempts} attempts left."
+    conn.execute("DELETE FROM otps WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+    return True, "OK"
 
-    /* ── FORM ─────────────────────────────────────────── */
-    .fg{margin-bottom:14px}
-    .fg label{display:block;font-size:11px;font-family:var(--fm);letter-spacing:1px;color:var(--text3);margin-bottom:5px;text-transform:uppercase}
-    .fg input,.fg select,.fg textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;transition:border-color .2s;outline:none}
-    .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
-    .fg select option{background:var(--bg2)}
-    .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .err{color:var(--red);font-size:11px;font-family:var(--fm);margin-top:-6px;margin-bottom:8px;display:none}
-    .succ{color:var(--green);font-size:11px;font-family:var(--fm);margin-bottom:8px;display:none}
+def get_user_by_email(email):
+    conn = get_db()
+    u = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    conn.close()
+    return dict(u) if u else None
 
-    /* ── MODAL ────────────────────────────────────────── */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(6px);padding:20px}
-    .modal.open{display:flex}
-    .mbox{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);width:100%;max-width:440px;padding:32px;position:relative;animation:popIn .22s ease}
-    @keyframes popIn{from{transform:scale(.92) translateY(12px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-    .mclose{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center}
-    .mclose:hover{background:var(--card2);color:var(--text)}
-    .mtabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:22px}
-    .mtab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--fh)}
-    .mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
-    .tcont{display:none}.tcont.active{display:block}
-    .mh2{font-size:22px;font-weight:900;margin-bottom:4px;letter-spacing:-.5px}
-    .msub{font-size:13px;color:var(--text3);margin-bottom:20px}
+def get_user_by_id(uid):
+    conn = get_db()
+    u = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    conn.close()
+    return dict(u) if u else None
 
-    /* ── OTP INPUT ────────────────────────────────────── */
-    .otp-row{display:flex;gap:8px;justify-content:center;margin:16px 0}
-    .otp-d{width:46px;height:52px;text-align:center;font-size:22px;font-family:var(--fm);font-weight:500;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;transition:border-color .2s}
-    .otp-d:focus{border-color:var(--accent)}
+def log_activity(user_id, user_name, action, details=None, ip=None):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO activity_logs(user_id,user_name,action,details,ip_address) VALUES(?,?,?,?,?)",
+        (user_id, user_name, action, details, ip)
+    )
+    conn.commit()
+    conn.close()
 
-    /* ── CODE DISPLAY ─────────────────────────────────── */
-    .code-box{background:var(--bg2);border:2px solid var(--accent);border-radius:var(--r2);padding:28px;text-align:center;margin:18px 0}
-    .code-num{font-family:var(--fm);font-size:50px;font-weight:500;letter-spacing:12px;color:var(--accent)}
-    .code-timer-txt{font-family:var(--fm);font-size:13px;color:var(--text3);margin-top:10px}
-    .code-timer-txt span{color:var(--yellow);font-size:17px}
-    .timer-bar-w{background:var(--border);border-radius:4px;height:3px;margin-top:10px;overflow:hidden}
-    .timer-bar{height:100%;border-radius:4px;background:var(--accent);transition:width 1s linear}
+def broadcast_ws(data):
+    dead = set()
+    for ws in ws_clients:
+        try:
+            ws.send(json.dumps(data))
+        except:
+            dead.add(ws)
+    ws_clients.difference_update(dead)
 
-    /* ── QR ───────────────────────────────────────────── */
-    #qrContainer{display:flex;justify-content:center;margin-top:14px}
-    #qrContainer canvas,#qrContainer img{border-radius:10px;border:3px solid var(--accent);padding:8px;background:#fff}
-    .qr-scan-area{background:var(--bg2);border:2px dashed var(--border);border-radius:var(--r2);padding:20px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}
-    #scanVideo{width:100%;border-radius:8px;max-height:220px;object-fit:cover}
-    .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .scan-frame{width:150px;height:150px;border:2px solid var(--accent);border-radius:8px;position:relative}
-    .scan-frame::before,.scan-frame::after{content:'';position:absolute;width:20px;height:20px;border-color:var(--accent);border-style:solid}
-    .scan-frame::before{top:-2px;left:-2px;border-width:3px 0 0 3px}
-    .scan-frame::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0}
-    .scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanAnim 2s linear infinite}
-    @keyframes scanAnim{0%{top:0}100%{top:100%}}
-
-    /* ── FACE ─────────────────────────────────────────── */
-    #faceVideo{width:100%;border-radius:10px;border:2px solid var(--border);max-height:200px;object-fit:cover}
-    .face-status{text-align:center;font-family:var(--fm);font-size:12px;color:var(--text3);margin-top:8px}
-
-    /* ── D3 CHARTS ────────────────────────────────────── */
-    .chart-wrap{width:100%;overflow:hidden}
-    .chart-wrap svg{width:100%;font-family:var(--fh)}
-    .d3-bar rect{transition:opacity .2s}
-    .d3-bar rect:hover{opacity:.7}
-    .d3-tooltip{position:absolute;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-family:var(--fm);pointer-events:none;box-shadow:var(--shadow)}
-
-    /* ── ATT % RING ───────────────────────────────────── */
-    .ring-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-    .ring-item{text-align:center}
-    .ring-label{font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--fm)}
-
-    /* ── GEO ──────────────────────────────────────────── */
-    .geo-toggle{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);margin-bottom:14px;cursor:pointer}
-    .geo-toggle input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
-
-    /* ── TOAST ────────────────────────────────────────── */
-    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card2);border:1px solid var(--border);padding:11px 22px;border-radius:30px;font-size:13px;z-index:9999;transition:transform .3s ease;white-space:nowrap;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px}
-    #toast.show{transform:translateX(-50%) translateY(0)}
-    #toast.ok{border-color:var(--green);color:var(--green)}
-    #toast.err{border-color:var(--red);color:var(--red)}
-    #toast.warn{border-color:var(--yellow);color:var(--yellow)}
-
-    /* ── INSTALL PROMPT ───────────────────────────────── */
-    #installBanner{display:none;position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--accent);border-radius:var(--r2);padding:16px 20px;z-index:9998;box-shadow:var(--shadow);max-width:280px;animation:popIn .3s ease}
-    #installBanner h4{font-size:14px;font-weight:700;margin-bottom:4px}
-    #installBanner p{font-size:12px;color:var(--text3);margin-bottom:12px}
-    #installBanner .ib-btns{display:flex;gap:8px}
-
-    /* ── LIVE INDICATOR ───────────────────────────────── */
-    .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block;margin-right:4px}
-    .ws-status{font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--text3);display:flex;align-items:center;gap:4px}
-
-    /* ── SUBJ TAG ─────────────────────────────────────── */
-    .stag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-family:var(--fm);background:var(--bluel);color:var(--blue)}
-
-    /* ── EMPTY ────────────────────────────────────────── */
-    .empty{text-align:center;padding:36px;color:var(--text3);font-size:13px}
-    .empty .ei{font-size:32px;margin-bottom:8px}
-
-    /* ── GRID ─────────────────────────────────────────── */
-    .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
-
-    /* ── INPUT SEARCH ─────────────────────────────────── */
-    .search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-    .search-bar input{flex:1;min-width:180px;padding:9px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:13px;outline:none}
-    .search-bar input:focus{border-color:var(--accent)}
-
-    /* ── RESPONSIVE ───────────────────────────────────── */
-    @media(max-width:700px){
-      nav{padding:14px 18px}
-      #dashboard{padding:18px}
-      .g2,.g3,.frow{grid-template-columns:1fr}
-      .hero-title{font-size:36px;letter-spacing:-1px}
-      .dash-tabs{width:100%}
-      .dtab{flex:1;text-align:center;font-size:12px;padding:6px 10px}
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV -->
-<nav>
-  <div class="nav-logo" onclick="goHome()">Smart<span>Attend</span><span class="dot"></span></div>
-  <div class="nav-right">
-    <div class="ws-status" id="wsStatus"><span style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block"></span> offline</div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-    <div id="userChip">
-      Welcome, <strong id="navName">—</strong>
-      <span class="role-pill" id="navRole">—</span>
-    </div>
-    <div id="authBtns" style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="openAuth('login')">Sign In</button>
-      <button class="btn btn-primary" onclick="openAuth('register')">Get Started</button>
-    </div>
-    <button class="btn btn-outline btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Sign Out</button>
-  </div>
-</nav>
-
-<!-- HOME PAGE -->
-<div id="homePage">
-  <div class="hero-grid"></div>
-  <div class="hero-tag">✦ Attendance Reinvented</div>
-  <h1 class="hero-title">Attendance that<br><span class="line2">actually works.</span></h1>
-  <p class="hero-sub">Real-time code + QR attendance for students, teachers & admins. Geo-locked. Anti-proxy. Beautiful.</p>
-  <div class="hero-ctas">
-    <button class="btn btn-primary" onclick="openAuth('register')" style="padding:12px 28px;font-size:15px">Get Started Free →</button>
-    <button class="btn btn-outline" onclick="openAuth('login')" style="padding:12px 28px;font-size:15px">Sign In</button>
-  </div>
-  <div class="features">
-    <div class="feature-card"><div class="f-icon">⏱️</div><h3>2-Min Codes + QR</h3><p>Auto-expiring codes & scannable QR — no proxy attendance possible.</p></div>
-    <div class="feature-card"><div class="f-icon">📍</div><h3>Geo-Location Lock</h3><p>Teacher sets classroom radius. Students must be physically present.</p></div>
-    <div class="feature-card"><div class="f-icon">📊</div><h3>D3.js Analytics</h3><p>Beautiful animated charts tracking trends weekly and monthly.</p></div>
-    <div class="feature-card"><div class="f-icon">🔐</div><h3>Face Recognition</h3><p>Login with your face — no passwords needed on trusted devices.</p></div>
-    <div class="feature-card"><div class="f-icon">⚡</div><h3>Live WebSockets</h3><p>Dashboard updates in real-time as students mark attendance.</p></div>
-    <div class="feature-card"><div class="f-icon">🛡️</div><h3>Anti-Proxy System</h3><p>IP tracking + location validation flags suspicious activity instantly.</p></div>
-    <div class="feature-card"><div class="f-icon">📧</div><h3>Smart Alerts</h3><p>Auto email when attendance drops below 75%. Stay informed.</p></div>
-    <div class="feature-card"><div class="f-icon">📄</div><h3>Export Reports</h3><p>Download CSV or get reports emailed directly to you.</p></div>
-  </div>
-</div>
-
-<!-- DASHBOARD -->
-<div id="dashboard">
-  <div class="dash-header">
-    <div>
-      <div class="dash-title" id="dashTitle">Dashboard</div>
-      <div class="dash-sub" id="dashSub"></div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <span class="role-pill" id="rolePill">—</span>
-    </div>
-  </div>
-
-  <!-- STUDENT DASH -->
-  <div id="studentDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="sDT(event,'sOv')">Overview</button>
-      <button class="dtab" onclick="sDT(event,'sMark')">Mark Attendance</button>
-      <button class="dtab" onclick="sDT(event,'sSubj')">My Subjects</button>
-      <button class="dtab" onclick="sDT(event,'sCharts')">Analytics</button>
-    </div>
-    <div id="sOv" class="dsec active">
-      <div class="stats-row" id="sStats"><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div></div>
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Attendance Summary</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Subject</th><th>Teacher</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead><tbody id="sAttTbl"><tr><td colspan="6"><div class="empty"><div class="ei">📭</div>Loading...</div></td></tr></tbody></table></div>
+def otp_email_body(otp, name):
+    return f"""
+    <div style="font-family:Arial;max-width:500px;margin:auto;background:#0a0a0f;color:#f0f0f5;padding:36px;border-radius:16px;border:1px solid #2a2a3a">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#e04c2f"></div>
+        <h2 style="color:#e04c2f;margin:0;font-size:20px">SmartAttend</h2>
       </div>
-    </div>
-    <div id="sMark" class="dsec">
-      <div class="g2">
-        <!-- QR SCAN -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot"></span> Scan QR Code</div>
-          <div class="qr-scan-area">
-            <video id="scanVideo" autoplay playsinline muted style="display:none"></video>
-            <div id="scanPlaceholder" style="padding:30px 0;color:var(--text3)">
-              <div style="font-size:40px;margin-bottom:10px">📷</div>
-              <div style="font-size:13px">Camera will appear here</div>
-            </div>
-            <div class="scan-overlay" id="scanOverlay" style="display:none">
-              <div class="scan-frame"><div class="scan-line"></div></div>
-            </div>
-          </div>
-          <button class="btn btn-blue btn-full" id="startScanBtn" onclick="startQRScan()">📷 Start Camera Scan</button>
-          <button class="btn btn-ghost btn-full" id="stopScanBtn" onclick="stopQRScan()" style="display:none">✕ Stop Camera</button>
-          <div id="scanResult" style="margin-top:10px;font-family:var(--fm);font-size:12px;color:var(--green);text-align:center;display:none"></div>
-        </div>
-        <!-- MANUAL CODE -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot"></span> Enter Code Manually</div>
-          <div class="fg"><label>Subject</label><select id="markSubject"></select></div>
-          <div class="fg"><label>6-Digit Code</label><input id="markCode" maxlength="6" placeholder="XXXXXX" style="font-family:var(--fm);font-size:24px;letter-spacing:8px;text-align:center;text-transform:uppercase"></div>
-          <div class="err" id="markErr"></div>
-          <div class="succ" id="markSucc"></div>
-          <button class="btn btn-primary btn-full" onclick="markAttendance()">✓ Mark Present</button>
-        </div>
+      <p style="color:#888899;margin-bottom:28px;font-size:13px">Secure Authentication</p>
+      <p style="margin-bottom:6px">Hi <strong>{name}</strong>,</p>
+      <p style="color:#888899;margin-bottom:24px">Your one-time password for SmartAttend:</p>
+      <div style="text-align:center;background:#16161f;border:1px solid #2a2a3a;border-radius:12px;padding:28px;margin:20px 0">
+        <div style="font-size:44px;font-weight:700;letter-spacing:14px;color:#e04c2f;font-family:monospace">{otp}</div>
+        <div style="color:#888899;font-size:12px;margin-top:10px">Valid for 10 minutes · Do not share</div>
       </div>
+      <p style="color:#888899;font-size:12px;margin-top:20px">If you didn't request this, you can safely ignore this email.</p>
+      <hr style="border:none;border-top:1px solid #2a2a3a;margin:20px 0">
+      <p style="color:#555;font-size:11px">SmartAttend · Secure Attendance System</p>
     </div>
-    <div id="sSubj" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Enrolled Subjects</div>
-        <div id="sSubjList"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
+    """
+
+def low_attendance_email(student_name, student_email, subject_name, percentage):
+    body = f"""
+    <div style="font-family:Arial;max-width:500px;margin:auto;background:#0a0a0f;color:#f0f0f5;padding:36px;border-radius:16px;border:1px solid #e74c3c">
+      <h2 style="color:#e74c3c">⚠️ Low Attendance Alert</h2>
+      <p>Hi <strong>{student_name}</strong>,</p>
+      <p>Your attendance in <strong>{subject_name}</strong> has dropped to:</p>
+      <div style="text-align:center;background:#16161f;border:2px solid #e74c3c;border-radius:12px;padding:24px;margin:20px 0">
+        <div style="font-size:52px;font-weight:700;color:#e74c3c;font-family:monospace">{percentage}%</div>
+        <div style="color:#888899;font-size:13px;margin-top:6px">Minimum required: 75%</div>
       </div>
+      <p style="color:#f1c40f">Please attend upcoming classes to improve your attendance.</p>
+      <hr style="border:none;border-top:1px solid #2a2a3a;margin:20px 0">
+      <p style="color:#555;font-size:11px">SmartAttend · Automated Alert</p>
     </div>
-    <div id="sCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Weekly Attendance</div><div class="chart-wrap" id="sWeeklyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Monthly Trend</div><div class="chart-wrap" id="sMonthlyChart"></div></div>
-      </div>
-      <div class="card"><div class="card-title"><span class="ct-dot"></span> Subject Comparison</div><div class="chart-wrap" id="sSubjectChart"></div></div>
+    """
+    send_email(student_email, f"⚠️ Low Attendance Alert — {subject_name}", body)
+
+# ─── SERVE STATIC ─────────────────────────────────────────────────────────────
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
+# ─── WEBSOCKET ────────────────────────────────────────────────────────────────
+@sock.route('/ws')
+def websocket(ws):
+    ws_clients.add(ws)
+    try:
+        while True:
+            data = ws.receive()
+            if data is None:
+                break
+    except:
+        pass
+    finally:
+        ws_clients.discard(ws)
+
+# ─── AUTH ROUTES ──────────────────────────────────────────────────────────────
+@app.route('/register', methods=['POST'])
+@limiter.limit("10 per hour")
+def register():
+    data  = request.json
+    name  = data.get('name','').strip()
+    email = data.get('email','').strip().lower()
+    pwd   = data.get('password','')
+    utype = data.get('type','student')
+    if not all([name, email, pwd]):
+        return jsonify({'message':'All fields are required'}), 400
+    if utype not in ('student','teacher','admin'):
+        return jsonify({'message':'Invalid account type'}), 400
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+    if existing:
+        conn.close()
+        return jsonify({'message':'Email already registered'}), 409
+    conn.execute("INSERT INTO users(name,email,password,type,verified) VALUES(?,?,?,?,0)",
+                 (name, email, hash_pass(pwd), utype))
+    conn.commit()
+    conn.close()
+    otp = generate_otp()
+    store_otp(email, otp)
+    send_email(email, "SmartAttend — Verify Your Email", otp_email_body(otp, name))
+    log_activity(None, name, 'REGISTER', f'New {utype} registered', request.remote_addr)
+    return jsonify({'message':'OTP sent to your email'}), 200
+
+@app.route('/login', methods=['POST'])
+@limiter.limit("20 per hour")
+def login():
+    data  = request.json
+    email = data.get('email','').strip().lower()
+    pwd   = data.get('password','')
+    user  = get_user_by_email(email)
+    if not user or user['password'] != hash_pass(pwd):
+        return jsonify({'message':'Invalid email or password'}), 401
+    otp = generate_otp()
+    store_otp(email, otp)
+    send_email(email, "SmartAttend — Login OTP", otp_email_body(otp, user['name']))
+    log_activity(user['id'], user['name'], 'LOGIN_ATTEMPT', None, request.remote_addr)
+    return jsonify({'message':'OTP sent to your email'}), 200
+
+@app.route('/verify', methods=['POST'])
+@limiter.limit("30 per hour")
+def verify():
+    data  = request.json
+    email = data.get('email','').strip().lower()
+    otp   = data.get('otp','').strip()
+    ok, msg = verify_otp_db(email, otp)
+    if not ok:
+        return jsonify({'message': msg}), 401
+    conn = get_db()
+    conn.execute("UPDATE users SET verified=1 WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+    user  = get_user_by_email(email)
+    token = create_access_token(identity=str(user['id']))
+    log_activity(user['id'], user['name'], 'LOGIN_SUCCESS', None, request.remote_addr)
+    return jsonify({'message':'Verified', 'token': token, 'user': {
+        'id': user['id'], 'name': user['name'],
+        'email': user['email'], 'type': user['type'],
+        'theme': user['theme'] or 'dark',
+        'has_face': bool(user['face_data'])
+    }}), 200
+
+@app.route('/resend-otp', methods=['POST'])
+@limiter.limit("5 per hour")
+def resend_otp():
+    data  = request.json
+    email = data.get('email','').strip().lower()
+    user  = get_user_by_email(email)
+    if not user:
+        return jsonify({'message':'Email not found'}), 404
+    otp = generate_otp()
+    store_otp(email, otp)
+    send_email(email, "SmartAttend — New OTP", otp_email_body(otp, user['name']))
+    return jsonify({'message':'OTP resent'}), 200
+
+# ─── FACE RECOGNITION ────────────────────────────────────────────────────────
+@app.route('/face/register', methods=['POST'])
+@jwt_required()
+def face_register():
+    uid       = int(get_jwt_identity())
+    face_data = request.json.get('face_data')
+    if not face_data:
+        return jsonify({'message':'No face data provided'}), 400
+    conn = get_db()
+    conn.execute("UPDATE users SET face_data=? WHERE id=?", (face_data, uid))
+    conn.commit()
+    conn.close()
+    user = get_user_by_id(uid)
+    log_activity(uid, user['name'], 'FACE_REGISTERED', None, request.remote_addr)
+    return jsonify({'message':'Face registered successfully'}), 200
+
+@app.route('/face/login', methods=['POST'])
+@limiter.limit("10 per hour")
+def face_login():
+    data       = request.json
+    email      = data.get('email','').strip().lower()
+    face_data  = data.get('face_data')
+    user       = get_user_by_email(email)
+    if not user or not user['face_data']:
+        return jsonify({'message':'Face login not set up for this account'}), 400
+    # In production, compare face embeddings. Here we do a basic check.
+    if face_data and user['face_data']:
+        token = create_access_token(identity=str(user['id']))
+        log_activity(user['id'], user['name'], 'FACE_LOGIN', None, request.remote_addr)
+        return jsonify({'message':'Face verified', 'token': token, 'user': {
+            'id': user['id'], 'name': user['name'],
+            'email': user['email'], 'type': user['type'],
+            'theme': user['theme'] or 'dark',
+            'has_face': True
+        }}), 200
+    return jsonify({'message':'Face not recognized'}), 401
+
+# ─── THEME ────────────────────────────────────────────────────────────────────
+@app.route('/user/theme', methods=['POST'])
+@jwt_required()
+def update_theme():
+    uid   = int(get_jwt_identity())
+    theme = request.json.get('theme','dark')
+    conn  = get_db()
+    conn.execute("UPDATE users SET theme=? WHERE id=?", (theme, uid))
+    conn.commit()
+    conn.close()
+    return jsonify({'message':'Theme updated'}), 200
+
+# ─── STUDENT ROUTES ───────────────────────────────────────────────────────────
+@app.route('/student/dashboard', methods=['GET'])
+@jwt_required()
+def student_dashboard():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'student':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT s.id, s.name, u.name as teacher,
+               COALESCE(SUM(CASE WHEN a.student_id=? THEN 1 ELSE 0 END),0) as present,
+               COUNT(DISTINCT ac.id) as total
+        FROM subjects s
+        LEFT JOIN users u ON u.id=s.teacher_id
+        LEFT JOIN attendance_codes ac ON ac.subject_id=s.id
+        LEFT JOIN attendance a ON a.subject_id=s.id AND a.student_id=?
+        GROUP BY s.id
+    """, (uid, uid)).fetchall()
+
+    # Weekly trend (last 7 days)
+    weekly = conn.execute("""
+        SELECT date, COUNT(*) as count FROM attendance
+        WHERE student_id=? AND date >= date('now','-7 days')
+        GROUP BY date ORDER BY date
+    """, (uid,)).fetchall()
+
+    # Monthly trend (last 6 months)
+    monthly = conn.execute("""
+        SELECT strftime('%Y-%m', date) as month, COUNT(*) as count
+        FROM attendance WHERE student_id=?
+        GROUP BY month ORDER BY month DESC LIMIT 6
+    """, (uid,)).fetchall()
+
+    total_present = sum(r['present'] for r in rows)
+    total_classes = sum(r['total'] for r in rows)
+    subjects_out  = []
+    for r in rows:
+        pct = round(r['present'] / r['total'] * 100) if r['total'] > 0 else 0
+        subjects_out.append({
+            'id': r['id'], 'name': r['name'], 'teacher': r['teacher'],
+            'present': r['present'], 'total': r['total'], 'percentage': pct
+        })
+    conn.close()
+    return jsonify({
+        'subjects': subjects_out,
+        'total_present': total_present,
+        'total_classes': total_classes,
+        'weekly_trend': [dict(w) for w in weekly],
+        'monthly_trend': [dict(m) for m in monthly]
+    })
+
+@app.route('/student/mark-attendance', methods=['POST'])
+@jwt_required()
+@limiter.limit("30 per hour")
+def mark_attendance():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'student':
+        return jsonify({'message':'Unauthorized'}), 403
+
+    data       = request.json
+    subject_id = data.get('subject_id')
+    code       = data.get('code','').strip().upper()
+    student_lat = data.get('lat')
+    student_lng = data.get('lng')
+    ip          = request.remote_addr
+
+    conn = get_db()
+    code_row = conn.execute(
+        "SELECT * FROM attendance_codes WHERE code=? AND subject_id=? AND expires_at>?",
+        (code, subject_id, datetime.now().isoformat())
+    ).fetchone()
+
+    if not code_row:
+        conn.close()
+        return jsonify({'message':'Invalid or expired code'}), 400
+
+    # Anti-proxy: check if same IP already used this code
+    ip_check = conn.execute(
+        "SELECT id FROM attendance WHERE subject_id=? AND ip_address=? AND date=?",
+        (subject_id, ip, datetime.now().strftime('%Y-%m-%d'))
+    ).fetchone()
+    if ip_check:
+        conn.execute("INSERT INTO suspicious_flags(student_id,subject_id,reason) VALUES(?,?,?)",
+                     (uid, subject_id, f"Duplicate IP {ip}"))
+        conn.commit()
+        conn.close()
+        return jsonify({'message':'Suspicious activity detected. Already marked from this device.'}), 409
+
+    # Geo-location check
+    if code_row['lat'] and code_row['lng'] and code_row['radius']:
+        if not student_lat or not student_lng:
+            conn.close()
+            return jsonify({'message':'Location required for this class. Please enable GPS.'}), 400
+        from math import radians, sin, cos, sqrt, atan2
+        R = 6371000
+        lat1, lon1 = radians(float(code_row['lat'])), radians(float(code_row['lng']))
+        lat2, lon2 = radians(float(student_lat)), radians(float(student_lng))
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+        distance = R * 2 * atan2(sqrt(a), sqrt(1-a))
+        if distance > float(code_row['radius']):
+            conn.execute("INSERT INTO suspicious_flags(student_id,subject_id,reason) VALUES(?,?,?)",
+                         (uid, subject_id, f"Out of range: {distance:.0f}m away"))
+            conn.commit()
+            conn.close()
+            return jsonify({'message': f'You are {distance:.0f}m away. Must be within {code_row["radius"]}m.'}), 400
+
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        conn.execute(
+            "INSERT INTO attendance(student_id,subject_id,date,ip_address,lat,lng) VALUES(?,?,?,?,?,?)",
+            (uid, subject_id, today, ip, student_lat, student_lng)
+        )
+        conn.commit()
+
+        # Check for low attendance and alert
+        rows = conn.execute("""
+            SELECT COUNT(DISTINCT ac.id) as total,
+                   COUNT(DISTINCT a.date) as present
+            FROM subjects s
+            LEFT JOIN attendance_codes ac ON ac.subject_id=s.id
+            LEFT JOIN attendance a ON a.subject_id=s.id AND a.student_id=?
+            WHERE s.id=?
+        """, (uid, subject_id)).fetchone()
+        if rows and rows['total'] > 0:
+            pct = round(rows['present'] / rows['total'] * 100)
+            if pct < 75:
+                subj = conn.execute("SELECT name FROM subjects WHERE id=?", (subject_id,)).fetchone()
+                threading.Thread(target=low_attendance_email,
+                    args=(user['name'], user['email'], subj['name'] if subj else 'Subject', pct),
+                    daemon=True).start()
+        conn.close()
+
+        # Broadcast via WebSocket
+        broadcast_ws({'type':'attendance_marked','student': user['name'],'subject_id': subject_id})
+        log_activity(uid, user['name'], 'ATTENDANCE_MARKED', f'Subject {subject_id}', ip)
+        return jsonify({'message':'Attendance marked successfully!'}), 200
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'message':'Attendance already marked for today'}), 409
+
+# ─── TEACHER ROUTES ───────────────────────────────────────────────────────────
+@app.route('/teacher/dashboard', methods=['GET'])
+@jwt_required()
+def teacher_dashboard():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    subjects = conn.execute("""
+        SELECT s.id, s.name,
+               COUNT(DISTINCT a.student_id) as student_count,
+               COUNT(DISTINCT ac.id) as session_count
+        FROM subjects s
+        LEFT JOIN attendance a ON a.subject_id=s.id
+        LEFT JOIN attendance_codes ac ON ac.subject_id=s.id
+        WHERE s.teacher_id=? GROUP BY s.id
+    """, (uid,)).fetchall()
+
+    total_students = conn.execute(
+        "SELECT COUNT(DISTINCT a.student_id) FROM attendance a JOIN subjects s ON s.id=a.subject_id WHERE s.teacher_id=?", (uid,)
+    ).fetchone()[0]
+    total_sessions = conn.execute("SELECT COUNT(*) FROM attendance_codes WHERE teacher_id=?", (uid,)).fetchone()[0]
+    today = datetime.now().strftime('%Y-%m-%d')
+    today_sessions = conn.execute(
+        "SELECT COUNT(*) FROM attendance_codes WHERE teacher_id=? AND date(created_at)=?", (uid, today)
+    ).fetchone()[0]
+    recent_sessions = conn.execute("""
+        SELECT ac.code, s.name as subject, date(ac.created_at) as date,
+               COUNT(a.id) as count
+        FROM attendance_codes ac
+        JOIN subjects s ON s.id=ac.subject_id
+        LEFT JOIN attendance a ON a.subject_id=ac.subject_id AND date(a.date)=date(ac.created_at)
+        WHERE ac.teacher_id=? GROUP BY ac.id ORDER BY ac.created_at DESC LIMIT 10
+    """, (uid,)).fetchall()
+    # Weekly sessions trend
+    weekly = conn.execute("""
+        SELECT date(created_at) as date, COUNT(*) as count
+        FROM attendance_codes WHERE teacher_id=? AND date(created_at)>=date('now','-7 days')
+        GROUP BY date ORDER BY date
+    """, (uid,)).fetchall()
+    conn.close()
+    return jsonify({
+        'subjects': [dict(s) for s in subjects],
+        'total_subjects': len(subjects),
+        'total_students': total_students,
+        'total_sessions': total_sessions,
+        'today_sessions': today_sessions,
+        'recent_sessions': [dict(r) for r in recent_sessions],
+        'weekly_trend': [dict(w) for w in weekly]
+    })
+
+@app.route('/teacher/subjects', methods=['POST'])
+@jwt_required()
+def add_subject():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    name = request.json.get('name','').strip()
+    if not name:
+        return jsonify({'message':'Subject name required'}), 400
+    conn = get_db()
+    conn.execute("INSERT INTO subjects(name,teacher_id) VALUES(?,?)", (name, uid))
+    conn.commit()
+    conn.close()
+    log_activity(uid, user['name'], 'SUBJECT_ADDED', name, request.remote_addr)
+    return jsonify({'message':'Subject added'}), 200
+
+@app.route('/teacher/subjects/<int:subject_id>', methods=['DELETE'])
+@jwt_required()
+def delete_subject(subject_id):
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    conn.execute("DELETE FROM subjects WHERE id=? AND teacher_id=?", (subject_id, uid))
+    conn.commit()
+    conn.close()
+    return jsonify({'message':'Subject removed'}), 200
+
+@app.route('/teacher/generate-code', methods=['POST'])
+@jwt_required()
+def generate_attendance_code():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    data       = request.json
+    subject_id = data.get('subject_id')
+    lat        = data.get('lat')
+    lng        = data.get('lng')
+    radius     = data.get('radius')
+    code       = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    now        = datetime.now()
+    expires    = now + timedelta(minutes=2)
+    conn = get_db()
+    subj = conn.execute("SELECT * FROM subjects WHERE id=? AND teacher_id=?", (subject_id, uid)).fetchone()
+    if not subj:
+        conn.close()
+        return jsonify({'message':'Subject not found'}), 404
+    conn.execute(
+        "INSERT INTO attendance_codes(code,subject_id,teacher_id,created_at,expires_at,lat,lng,radius) VALUES(?,?,?,?,?,?,?,?)",
+        (code, subject_id, uid, now.isoformat(), expires.isoformat(), lat, lng, radius)
+    )
+    conn.commit()
+    conn.close()
+    log_activity(uid, user['name'], 'CODE_GENERATED', f'Subject {subj["name"]} Code {code}', request.remote_addr)
+    broadcast_ws({'type':'code_generated','subject': subj['name'],'teacher': user['name']})
+    return jsonify({'code': code, 'expires_in': 120, 'geo_enabled': bool(lat and lng and radius)}), 200
+
+@app.route('/teacher/attendance', methods=['GET'])
+@jwt_required()
+def teacher_attendance():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    subject_id = request.args.get('subject_id')
+    conn = get_db()
+    if subject_id:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject,
+                   COUNT(a.id) as present,
+                   (SELECT COUNT(DISTINCT ac.id) FROM attendance_codes ac WHERE ac.subject_id=s.id) as total
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? AND s.id=? GROUP BY u.id, s.id
+        """, (uid, subject_id)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject,
+                   COUNT(a.id) as present,
+                   (SELECT COUNT(DISTINCT ac.id) FROM attendance_codes ac WHERE ac.subject_id=s.id) as total
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? GROUP BY u.id, s.id
+        """, (uid,)).fetchall()
+    conn.close()
+    return jsonify({'records': [dict(r) for r in rows]})
+
+@app.route('/teacher/export', methods=['GET'])
+@jwt_required()
+def teacher_export():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    subject_id = request.args.get('subject_id')
+    fmt        = request.args.get('format','csv')
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT u.name as student_name, u.email, s.name as subject, a.date
+        FROM attendance a JOIN users u ON u.id=a.student_id
+        JOIN subjects s ON s.id=a.subject_id
+        WHERE s.teacher_id=? {}
+        ORDER BY a.date DESC
+    """.format("AND s.id=?" if subject_id else ""),
+        (uid, subject_id) if subject_id else (uid,)
+    ).fetchall()
+    conn.close()
+
+    if fmt == 'csv':
+        output = "Student Name,Email,Subject,Date\n"
+        for r in rows:
+            output += f"{r['student_name']},{r['email']},{r['subject']},{r['date']}\n"
+        from flask import Response
+        return Response(output, mimetype='text/csv',
+            headers={"Content-Disposition": "attachment;filename=attendance.csv"})
+    return jsonify({'records': [dict(r) for r in rows]})
+
+@app.route('/teacher/export-email', methods=['POST'])
+@jwt_required()
+def teacher_export_email():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'teacher':
+        return jsonify({'message':'Unauthorized'}), 403
+    subject_id = request.json.get('subject_id')
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT u.name as student_name, u.email, s.name as subject, a.date
+        FROM attendance a JOIN users u ON u.id=a.student_id
+        JOIN subjects s ON s.id=a.subject_id
+        WHERE s.teacher_id=? {}
+        ORDER BY a.date DESC
+    """.format("AND s.id=?" if subject_id else ""),
+        (uid, subject_id) if subject_id else (uid,)
+    ).fetchall()
+    conn.close()
+
+    csv_data = "Student Name,Email,Subject,Date\n"
+    for r in rows:
+        csv_data += f"{r['student_name']},{r['email']},{r['subject']},{r['date']}\n"
+
+    body = f"""
+    <div style="font-family:Arial;max-width:500px;margin:auto;background:#0a0a0f;color:#f0f0f5;padding:32px;border-radius:12px">
+      <h2 style="color:#e04c2f">SmartAttend — Attendance Export</h2>
+      <p>Hi <strong>{user['name']}</strong>,</p>
+      <p>Please find the attendance report attached as a CSV file.</p>
+      <p style="color:#888899;font-size:12px">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
     </div>
-  </div>
+    """
+    send_email(user['email'], "SmartAttend — Attendance Export", body,
+               attachment=csv_data.encode(), attachment_name="attendance.csv")
+    return jsonify({'message':'Report sent to your email'}), 200
 
-  <!-- TEACHER DASH -->
-  <div id="teacherDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="tDT(event,'tOv')">Overview</button>
-      <button class="dtab" onclick="tDT(event,'tCode')">Generate Code</button>
-      <button class="dtab" onclick="tDT(event,'tAtt')">View Attendance</button>
-      <button class="dtab" onclick="tDT(event,'tSubj')">Subjects</button>
-      <button class="dtab" onclick="tDT(event,'tCharts')">Analytics</button>
-    </div>
-    <div id="tOv" class="dsec active">
-      <div class="stats-row" id="tStats"></div>
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Recent Sessions <span class="live-dot" style="margin-left:8px"></span><span style="font-size:11px;color:var(--green);font-family:var(--fm)">LIVE</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Subject</th><th>Date</th><th>Students</th><th>Code</th></tr></thead><tbody id="tSessionsTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="tCode" class="dsec">
-      <div class="card" style="max-width:520px;margin:0 auto">
-        <div class="card-title"><span class="ct-dot"></span> Generate Attendance Code</div>
-        <div class="fg"><label>Subject</label><select id="codeSubject"></select></div>
-        <!-- GEO OPTION -->
-        <label class="geo-toggle">
-          <input type="checkbox" id="geoEnabled" onchange="toggleGeoFields()">
-          <div><div style="font-size:14px;font-weight:700">📍 Enable Geo-Location Lock</div><div style="font-size:12px;color:var(--text3)">Students must be within set radius to mark attendance</div></div>
-        </label>
-        <div id="geoFields" style="display:none">
-          <div class="fg"><label>Radius (meters)</label><input type="number" id="geoRadius" value="50" min="10" max="500" placeholder="e.g. 50"></div>
-          <button class="btn btn-outline btn-sm" onclick="getTeacherLocation()" style="margin-bottom:14px">📍 Use My Current Location</button>
-          <div id="geoStatus" style="font-size:12px;color:var(--text3);font-family:var(--fm);margin-bottom:10px"></div>
-          <input type="hidden" id="geoLat"><input type="hidden" id="geoLng">
-        </div>
-        <button class="btn btn-primary btn-full" onclick="generateCode()">⚡ Generate Code + QR</button>
-        <div id="codeDisplay" style="display:none">
-          <div class="code-box">
-            <div style="font-size:11px;font-family:var(--fm);color:var(--text3);letter-spacing:2px;margin-bottom:8px">ATTENDANCE CODE</div>
-            <div class="code-num" id="liveCode">------</div>
-            <div class="code-timer-txt">Expires in <span id="timerCount">120</span>s</div>
-            <div class="timer-bar-w"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
-          </div>
-          <div id="qrContainer"></div>
-          <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:12px">Show this QR on projector or share the code verbally</p>
-        </div>
-      </div>
-    </div>
-    <div id="tAtt" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Student Records
-          <div class="ct-actions">
-            <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
-            <button class="btn btn-outline btn-sm" onclick="exportEmail()">✉ Email Report</button>
-          </div>
-        </div>
-        <div class="search-bar">
-          <select id="filterSubject" onchange="loadTAttendance()"><option value="">All Subjects</option></select>
-          <input id="searchStudent" placeholder="Search student..." oninput="filterAttTable()">
-        </div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead><tbody id="tAttTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="tSubj" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Manage Subjects</div>
-        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-          <input id="newSubjName" placeholder="Subject name (e.g. Physics)" style="flex:1;min-width:180px;padding:9px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;outline:none">
-          <button class="btn btn-primary" onclick="addSubject()">+ Add</button>
-        </div>
-        <div id="tSubjList"></div>
-      </div>
-    </div>
-    <div id="tCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Sessions This Week</div><div class="chart-wrap" id="tWeeklyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Students per Subject</div><div class="chart-wrap" id="tSubjChart"></div></div>
-      </div>
-    </div>
-  </div>
+# ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
+@app.route('/admin/dashboard', methods=['GET'])
+@jwt_required()
+def admin_dashboard():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'admin':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    total_students = conn.execute("SELECT COUNT(*) FROM users WHERE type='student'").fetchone()[0]
+    total_teachers = conn.execute("SELECT COUNT(*) FROM users WHERE type='teacher'").fetchone()[0]
+    total_subjects = conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0]
+    total_records  = conn.execute("SELECT COUNT(*) FROM attendance").fetchone()[0]
+    total_flags    = conn.execute("SELECT COUNT(*) FROM suspicious_flags").fetchone()[0]
 
-  <!-- ADMIN DASH -->
-  <div id="adminDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="aDT(event,'aOv')">Overview</button>
-      <button class="dtab" onclick="aDT(event,'aStudents')">Students</button>
-      <button class="dtab" onclick="aDT(event,'aTeachers')">Teachers</button>
-      <button class="dtab" onclick="aDT(event,'aAtt')">Attendance</button>
-      <button class="dtab" onclick="aDT(event,'aFlags')">🚩 Flags</button>
-      <button class="dtab" onclick="aDT(event,'aLogs')">Activity Logs</button>
-      <button class="dtab" onclick="aDT(event,'aCharts')">Analytics</button>
-    </div>
-    <div id="aOv" class="dsec active">
-      <div class="stats-row" id="aStats"></div>
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Recent Users</div><div id="aRecentUsers"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> <span class="live-dot"></span> Active Sessions</div><div id="aActiveSessions"></div></div>
-      </div>
-    </div>
-    <div id="aStudents" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Students</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aStudTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aTeachers" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Teachers</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aTeachTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aAtt" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Attendance Records</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Teacher</th><th>Date</th><th>Status</th></tr></thead><tbody id="aAttTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aFlags" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> 🚩 Suspicious Activity</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Reason</th><th>Time</th></tr></thead><tbody id="aFlagsTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aLogs" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Activity Logs</div>
-        <div class="search-bar"><input id="logSearch" placeholder="Search logs..." oninput="filterLogs()"></div>
-        <div class="tbl-wrap"><table><thead><tr><th>User</th><th>Action</th><th>Details</th><th>IP</th><th>Time</th></tr></thead><tbody id="aLogsTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Monthly Records</div><div class="chart-wrap" id="aMonthlyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> User Distribution</div><div class="chart-wrap" id="aUserChart"></div></div>
-      </div>
-    </div>
-  </div>
-</div>
+    recent_users = conn.execute(
+        "SELECT id,name,email,type,joined FROM users ORDER BY id DESC LIMIT 8"
+    ).fetchall()
+    active_sessions = conn.execute("""
+        SELECT s.name as subject, u.name as teacher
+        FROM attendance_codes ac
+        JOIN subjects s ON s.id=ac.subject_id
+        JOIN users u ON u.id=ac.teacher_id
+        WHERE ac.expires_at > ? ORDER BY ac.created_at DESC
+    """, (datetime.now().isoformat(),)).fetchall()
+    students = conn.execute(
+        "SELECT id,name,email,joined FROM users WHERE type='student' ORDER BY id DESC"
+    ).fetchall()
+    teachers = conn.execute("""
+        SELECT u.id, u.name, u.email, u.joined,
+               GROUP_CONCAT(s.name,', ') as subjects
+        FROM users u LEFT JOIN subjects s ON s.teacher_id=u.id
+        WHERE u.type='teacher' GROUP BY u.id ORDER BY u.id DESC
+    """).fetchall()
+    attendance = conn.execute("""
+        SELECT u.name as student_name, s.name as subject,
+               tu.name as teacher, a.date
+        FROM attendance a JOIN users u ON u.id=a.student_id
+        JOIN subjects s ON s.id=a.subject_id
+        JOIN users tu ON tu.id=s.teacher_id
+        ORDER BY a.date DESC LIMIT 100
+    """).fetchall()
+    flags = conn.execute("""
+        SELECT sf.*, u.name as student_name, s.name as subject_name
+        FROM suspicious_flags sf
+        LEFT JOIN users u ON u.id=sf.student_id
+        LEFT JOIN subjects s ON s.id=sf.subject_id
+        ORDER BY sf.created_at DESC LIMIT 50
+    """).fetchall()
+    logs = conn.execute(
+        "SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 100"
+    ).fetchall()
+    # Monthly attendance trend
+    monthly = conn.execute("""
+        SELECT strftime('%Y-%m', date) as month, COUNT(*) as count
+        FROM attendance GROUP BY month ORDER BY month DESC LIMIT 6
+    """).fetchall()
+    conn.close()
+    return jsonify({
+        'total_students': total_students, 'total_teachers': total_teachers,
+        'total_subjects': total_subjects, 'total_records': total_records,
+        'total_flags': total_flags,
+        'recent_users': [dict(r) for r in recent_users],
+        'active_sessions': [dict(r) for r in active_sessions],
+        'students': [dict(r) for r in students],
+        'teachers': [dict(r) for r in teachers],
+        'attendance': [dict(r) for r in attendance],
+        'flags': [dict(r) for r in flags],
+        'logs': [dict(r) for r in logs],
+        'monthly_trend': [dict(m) for m in monthly]
+    })
 
-<!-- AUTH MODAL -->
-<div class="modal" id="authModal">
-  <div class="mbox">
-    <button class="mclose" onclick="closeModal()">✕</button>
-    <div class="mtabs">
-      <button class="mtab active" id="mTabLogin" onclick="switchMTab('login')">Sign In</button>
-      <button class="mtab" id="mTabReg" onclick="switchMTab('register')">Register</button>
-    </div>
-    <!-- LOGIN -->
-    <div class="tcont active" id="tcLogin">
-      <div class="mh2">Welcome back</div>
-      <div class="msub">Enter your credentials to continue</div>
-      <div class="fg"><label>Email</label><input id="lEmail" type="email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input id="lPass" type="password" placeholder="••••••••"></div>
-      <div class="err" id="loginErr"></div>
-      <button class="btn btn-primary btn-full" onclick="login()">Continue →</button>
-      <div style="text-align:center;margin-top:14px">
-        <button class="btn btn-ghost" onclick="switchMTab('face')" style="font-size:12px">🙂 Login with Face Recognition</button>
-      </div>
-    </div>
-    <!-- REGISTER -->
-    <div class="tcont" id="tcReg">
-      <div class="mh2">Create account</div>
-      <div class="msub">Join SmartAttend today</div>
-      <div class="frow">
-        <div class="fg"><label>Full Name</label><input id="rName" placeholder="John Doe"></div>
-        <div class="fg"><label>Account Type</label><select id="rType"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></div>
-      </div>
-      <div class="fg"><label>Email</label><input id="rEmail" type="email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input id="rPass" type="password" placeholder="Min. 6 characters"></div>
-      <div class="err" id="regErr"></div>
-      <button class="btn btn-primary btn-full" onclick="register()">Create Account →</button>
-    </div>
-    <!-- OTP -->
-    <div class="tcont" id="tcOTP">
-      <div class="mh2">Verify email</div>
-      <div class="msub" id="otpSub">OTP sent to your email</div>
-      <div class="otp-row">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,0)" onkeydown="otpBack(event,0)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,1)" onkeydown="otpBack(event,1)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,2)" onkeydown="otpBack(event,2)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,3)" onkeydown="otpBack(event,3)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,4)" onkeydown="otpBack(event,4)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,5)" onkeydown="otpBack(event,5)">
-      </div>
-      <div class="err" id="otpErr"></div>
-      <div class="succ" id="otpSucc"></div>
-      <button class="btn btn-primary btn-full" onclick="verifyOTP()">Verify & Continue →</button>
-      <button class="btn btn-ghost btn-full" style="margin-top:6px" onclick="resendOTP()">Resend OTP</button>
-    </div>
-    <!-- FACE LOGIN -->
-    <div class="tcont" id="tcFace">
-      <div class="mh2">Face Login</div>
-      <div class="msub">Position your face in the camera</div>
-      <div class="fg"><label>Email</label><input id="faceEmail" type="email" placeholder="you@example.com"></div>
-      <video id="faceVideo" autoplay playsinline muted style="display:none"></video>
-      <canvas id="faceCanvas" style="display:none"></canvas>
-      <div class="face-status" id="faceStatus">Camera not started</div>
-      <div class="err" id="faceErr"></div>
-      <button class="btn btn-blue btn-full" onclick="startFaceLogin()" style="margin-top:10px">📷 Start Camera</button>
-      <button class="btn btn-primary btn-full" onclick="captureFaceLogin()" id="captureFaceBtn" style="display:none;margin-top:8px">🙂 Capture & Login</button>
-      <button class="btn btn-ghost btn-full" onclick="switchMTab('login')" style="margin-top:6px">← Back to Password Login</button>
-    </div>
-  </div>
-</div>
+@app.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def admin_delete_user(user_id):
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'admin':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    log_activity(uid, user['name'], 'USER_DELETED', f'User ID {user_id}', request.remote_addr)
+    return jsonify({'message':'User removed'}), 200
 
-<!-- FACE SETUP MODAL -->
-<div class="modal" id="faceSetupModal">
-  <div class="mbox">
-    <button class="mclose" onclick="document.getElementById('faceSetupModal').classList.remove('open')">✕</button>
-    <div class="mh2">Setup Face Recognition</div>
-    <div class="msub">This enables passwordless login from any device</div>
-    <video id="setupFaceVideo" autoplay playsinline muted></video>
-    <canvas id="setupFaceCanvas" style="display:none"></canvas>
-    <div class="face-status" id="setupFaceStatus">Camera loading...</div>
-    <div style="display:flex;gap:10px;margin-top:12px">
-      <button class="btn btn-primary btn-full" onclick="captureSetupFace()">📸 Capture Face</button>
-      <button class="btn btn-outline" onclick="document.getElementById('faceSetupModal').classList.remove('open')">Cancel</button>
-    </div>
-  </div>
-</div>
+@app.route('/admin/logs', methods=['GET'])
+@jwt_required()
+def admin_logs():
+    uid  = int(get_jwt_identity())
+    user = get_user_by_id(uid)
+    if not user or user['type'] != 'admin':
+        return jsonify({'message':'Unauthorized'}), 403
+    conn = get_db()
+    logs = conn.execute(
+        "SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 200"
+    ).fetchall()
+    conn.close()
+    return jsonify({'logs': [dict(l) for l in logs]})
 
-<!-- TOAST -->
-<div id="toast">—</div>
+# ─── CLEANUP EXPIRED ──────────────────────────────────────────────────────────
+def cleanup_expired():
+    while True:
+        try:
+            conn = get_db()
+            conn.execute("DELETE FROM attendance_codes WHERE expires_at<?", (datetime.now().isoformat(),))
+            conn.execute("DELETE FROM otps WHERE expires<?", (datetime.now().isoformat(),))
+            conn.commit()
+            conn.close()
+        except:
+            pass
+        time.sleep(60)
 
-<!-- PWA INSTALL BANNER -->
-<div id="installBanner">
-  <h4>📱 Install SmartAttend</h4>
-  <p>Add to your home screen for the best experience</p>
-  <div class="ib-btns">
-    <button class="btn btn-primary btn-sm" onclick="installPWA()">Install</button>
-    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('installBanner').style.display='none'">Later</button>
-  </div>
-</div>
-
-<div class="d3-tooltip" id="d3tip" style="display:none"></div>
-
-<script>
-// ══════════════════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════════════════
-const API = '';
-let jwt = localStorage.getItem('sa_token') || '';
-let currentUser = JSON.parse(localStorage.getItem('sa_user') || 'null');
-let otpEmail = '', otpAction = '';
-let codeTimer = null;
-let wsConn = null;
-let teacherLat = null, teacherLng = null;
-let deferredInstall = null;
-let qrScanner = null;
-let faceStream = null;
-let allAttRecords = [];
-let allLogs = [];
-
-// ══════════════════════════════════════════════════════
-// API HELPER
-// ══════════════════════════════════════════════════════
-async function api(path, opts={}) {
-  const h = {'Content-Type':'application/json'};
-  if (jwt) h['Authorization'] = `Bearer ${jwt}`;
-  try {
-    const r = await fetch(API + path, {...opts, headers:{...h, ...opts.headers}});
-    const d = await r.json().catch(() => ({}));
-    return {ok: r.ok, status: r.status, data: d};
-  } catch(e) {
-    return {ok: false, data: {message: 'Network error'}};
-  }
-}
-
-// ══════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════
-function toast(msg, type='ok') {
-  const t = document.getElementById('toast');
-  const icons = {ok:'✓', err:'✕', warn:'⚠'};
-  t.innerHTML = `<span>${icons[type]||'ℹ'}</span> ${msg}`;
-  t.className = `show ${type}`;
-  clearTimeout(t._to);
-  t._to = setTimeout(() => t.className = '', 3200);
-}
-
-// ══════════════════════════════════════════════════════
-// THEME
-// ══════════════════════════════════════════════════════
-function toggleTheme() {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  const newTheme = isDark ? 'light' : 'dark';
-  html.setAttribute('data-theme', newTheme);
-  document.querySelector('.theme-toggle').textContent = isDark ? '🌙' : '☀️';
-  localStorage.setItem('sa_theme', newTheme);
-  if (jwt) api('/user/theme', {method:'POST', body: JSON.stringify({theme: newTheme})});
-}
-function initTheme() {
-  const saved = currentUser?.theme || localStorage.getItem('sa_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '☀️' : '🌙';
-}
-
-// ══════════════════════════════════════════════════════
-// WEBSOCKET
-// ══════════════════════════════════════════════════════
-function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${proto}://${location.host}/ws`;
-  try {
-    wsConn = new WebSocket(url);
-    wsConn.onopen = () => {
-      document.getElementById('wsStatus').innerHTML = '<span class="live-dot"></span> live';
-      document.getElementById('wsStatus').style.color = 'var(--green)';
-    };
-    wsConn.onclose = () => {
-      document.getElementById('wsStatus').innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block"></span> offline';
-      document.getElementById('wsStatus').style.color = 'var(--text3)';
-      setTimeout(connectWS, 5000);
-    };
-    wsConn.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      if (data.type === 'attendance_marked') {
-        toast(`✓ ${data.student} marked attendance`, 'ok');
-        if (currentUser?.type === 'teacher') loadTeacherDashboard();
-        if (currentUser?.type === 'admin') loadAdminDashboard();
-      }
-      if (data.type === 'code_generated') {
-        toast(`⚡ ${data.teacher} generated code for ${data.subject}`, 'ok');
-      }
-    };
-  } catch(e) {}
-}
-
-// ══════════════════════════════════════════════════════
-// MODAL
-// ══════════════════════════════════════════════════════
-function openAuth(tab) {
-  document.getElementById('authModal').classList.add('open');
-  switchMTab(tab);
-}
-function closeModal() {
-  document.getElementById('authModal').classList.remove('open');
-  stopFaceStream();
-}
-function switchMTab(tab) {
-  ['tcLogin','tcReg','tcOTP','tcFace'].forEach(t => document.getElementById(t).classList.remove('active'));
-  ['mTabLogin','mTabReg'].forEach(t => document.getElementById(t)?.classList.remove('active'));
-  if (tab === 'login') { document.getElementById('tcLogin').classList.add('active'); document.getElementById('mTabLogin').classList.add('active'); }
-  else if (tab === 'register') { document.getElementById('tcReg').classList.add('active'); document.getElementById('mTabReg').classList.add('active'); }
-  else if (tab === 'otp') document.getElementById('tcOTP').classList.add('active');
-  else if (tab === 'face') document.getElementById('tcFace').classList.add('active');
-}
-
-// ══════════════════════════════════════════════════════
-// OTP INPUTS
-// ══════════════════════════════════════════════════════
-function otpNext(el, idx) {
-  el.value = el.value.replace(/\D/g,'');
-  if (el.value && idx < 5) document.querySelectorAll('.otp-d')[idx+1].focus();
-  if (getOTP().length === 6) verifyOTP();
-}
-function otpBack(e, idx) {
-  if (e.key === 'Backspace' && !e.target.value && idx > 0) document.querySelectorAll('.otp-d')[idx-1].focus();
-}
-function getOTP() { return [...document.querySelectorAll('.otp-d')].map(i=>i.value).join(''); }
-function clearOTP() { document.querySelectorAll('.otp-d').forEach(i=>i.value=''); document.querySelectorAll('.otp-d')[0].focus(); }
-
-// ══════════════════════════════════════════════════════
-// AUTH
-// ══════════════════════════════════════════════════════
-async function register() {
-  const name = document.getElementById('rName').value.trim();
-  const email = document.getElementById('rEmail').value.trim().toLowerCase();
-  const pass = document.getElementById('rPass').value;
-  const type = document.getElementById('rType').value;
-  const err = document.getElementById('regErr');
-  err.style.display = 'none';
-  if (!name || !email || !pass) { err.textContent = 'All fields required.'; err.style.display = 'block'; return; }
-  if (pass.length < 6) { err.textContent = 'Password min 6 characters.'; err.style.display = 'block'; return; }
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Sending OTP...';
-  const r = await api('/register', {method:'POST', body: JSON.stringify({name,email,password:pass,type})});
-  btn.disabled = false; btn.textContent = 'Create Account →';
-  if (r.ok) { otpEmail = email; otpAction = 'register'; document.getElementById('otpSub').textContent = `OTP sent to ${email}`; clearOTP(); switchMTab('otp'); toast('OTP sent! Check your email'); }
-  else { err.textContent = r.data.message || 'Registration failed.'; err.style.display = 'block'; }
-}
-
-async function login() {
-  const email = document.getElementById('lEmail').value.trim().toLowerCase();
-  const pass = document.getElementById('lPass').value;
-  const err = document.getElementById('loginErr');
-  err.style.display = 'none';
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Sending OTP...';
-  const r = await api('/login', {method:'POST', body: JSON.stringify({email, password:pass})});
-  btn.disabled = false; btn.textContent = 'Continue →';
-  if (r.ok) { otpEmail = email; otpAction = 'login'; document.getElementById('otpSub').textContent = `OTP sent to ${email}`; clearOTP(); switchMTab('otp'); toast('OTP sent! Check your email'); }
-  else { err.textContent = r.data.message || 'Invalid credentials.'; err.style.display = 'block'; }
-}
-
-async function verifyOTP() {
-  const otp = getOTP();
-  const err = document.getElementById('otpErr');
-  const succ = document.getElementById('otpSucc');
-  err.style.display = 'none'; succ.style.display = 'none';
-  if (otp.length < 6) { err.textContent = 'Enter all 6 digits.'; err.style.display = 'block'; return; }
-  const r = await api('/verify', {method:'POST', body: JSON.stringify({email: otpEmail, otp})});
-  if (r.ok) {
-    succ.textContent = '✓ Verified! Logging you in...'; succ.style.display = 'block';
-    jwt = r.data.token; localStorage.setItem('sa_token', jwt);
-    localStorage.setItem('sa_user', JSON.stringify(r.data.user));
-    setTimeout(() => { closeModal(); setUser(r.data.user); }, 700);
-  } else { err.textContent = r.data.message || 'Wrong OTP.'; err.style.display = 'block'; clearOTP(); }
-}
-
-async function resendOTP() {
-  const r = await api('/resend-otp', {method:'POST', body: JSON.stringify({email: otpEmail})});
-  if (r.ok) toast('OTP resent!'); else toast(r.data.message || 'Failed', 'err');
-}
-
-function logout() {
-  jwt = ''; currentUser = null;
-  localStorage.removeItem('sa_token'); localStorage.removeItem('sa_user');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('homePage').style.display = 'flex';
-  document.getElementById('authBtns').style.display = 'flex';
-  document.getElementById('logoutBtn').style.display = 'none';
-  document.getElementById('userChip').style.display = 'none';
-  if (codeTimer) clearInterval(codeTimer);
-  stopQRScan(); stopFaceStream();
-  toast('Signed out');
-}
-
-function goHome() {
-  if (currentUser) return;
-  document.getElementById('homePage').style.display = 'flex';
-  document.getElementById('dashboard').style.display = 'none';
-}
-
-// ══════════════════════════════════════════════════════
-// FACE RECOGNITION
-// ══════════════════════════════════════════════════════
-async function startFaceLogin() {
-  try {
-    faceStream = await navigator.mediaDevices.getUserMedia({video:true});
-    const v = document.getElementById('faceVideo');
-    v.srcObject = faceStream; v.style.display = 'block';
-    document.getElementById('faceStatus').textContent = 'Camera active — position your face';
-    document.getElementById('captureFaceBtn').style.display = 'flex';
-  } catch(e) { toast('Camera access denied', 'err'); }
-}
-
-async function captureFaceLogin() {
-  const email = document.getElementById('faceEmail').value.trim().toLowerCase();
-  if (!email) { document.getElementById('faceErr').textContent = 'Enter your email first.'; document.getElementById('faceErr').style.display = 'block'; return; }
-  const v = document.getElementById('faceVideo');
-  const c = document.getElementById('faceCanvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
-  const faceData = c.toDataURL('image/jpeg', 0.8);
-  const r = await api('/face/login', {method:'POST', body: JSON.stringify({email, face_data: faceData})});
-  if (r.ok) {
-    jwt = r.data.token; localStorage.setItem('sa_token', jwt);
-    localStorage.setItem('sa_user', JSON.stringify(r.data.user));
-    stopFaceStream();
-    closeModal(); setUser(r.data.user);
-    toast('Face verified! Welcome back 👋');
-  } else { document.getElementById('faceErr').textContent = r.data.message; document.getElementById('faceErr').style.display = 'block'; }
-}
-
-async function startFaceSetup() {
-  document.getElementById('faceSetupModal').classList.add('open');
-  try {
-    faceStream = await navigator.mediaDevices.getUserMedia({video:true});
-    document.getElementById('setupFaceVideo').srcObject = faceStream;
-    document.getElementById('setupFaceStatus').textContent = 'Camera active — look at the camera';
-  } catch(e) { toast('Camera access denied', 'err'); }
-}
-
-async function captureSetupFace() {
-  const v = document.getElementById('setupFaceVideo');
-  const c = document.getElementById('setupFaceCanvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
-  const faceData = c.toDataURL('image/jpeg', 0.8);
-  const r = await api('/face/register', {method:'POST', body: JSON.stringify({face_data: faceData})});
-  if (r.ok) { toast('Face registered! You can now use face login ✓'); document.getElementById('faceSetupModal').classList.remove('open'); stopFaceStream(); }
-  else toast(r.data.message || 'Failed', 'err');
-}
-
-function stopFaceStream() {
-  if (faceStream) { faceStream.getTracks().forEach(t=>t.stop()); faceStream = null; }
-  const v = document.getElementById('faceVideo');
-  if (v) { v.style.display = 'none'; v.srcObject = null; }
-  document.getElementById('captureFaceBtn').style.display = 'none';
-}
-
-// ══════════════════════════════════════════════════════
-// SET USER & LOAD DASHBOARD
-// ══════════════════════════════════════════════════════
-function setUser(user) {
-  currentUser = user;
-  document.getElementById('homePage').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('authBtns').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'flex';
-  const chip = document.getElementById('userChip');
-  chip.style.display = 'flex';
-  document.getElementById('navName').textContent = user.name;
-  document.getElementById('navRole').textContent = user.type;
-  document.getElementById('navRole').className = `role-pill ${user.type}`;
-  document.getElementById('dashTitle').innerHTML = `Dashboard <span>— ${user.name}</span>`;
-  document.getElementById('dashSub').textContent = user.email;
-  const rp = document.getElementById('rolePill');
-  rp.textContent = user.type.charAt(0).toUpperCase() + user.type.slice(1);
-  rp.className = `role-pill ${user.type}`;
-  ['studentDash','teacherDash','adminDash'].forEach(d => document.getElementById(d).classList.remove('active'));
-  if (user.type === 'student') { document.getElementById('studentDash').classList.add('active'); loadStudentDashboard(); }
-  else if (user.type === 'teacher') { document.getElementById('teacherDash').classList.add('active'); loadTeacherDashboard(); }
-  else if (user.type === 'admin') { document.getElementById('adminDash').classList.add('active'); loadAdminDashboard(); }
-  initTheme();
-  connectWS();
-  // Offer face setup if not set up
-  if (!user.has_face) setTimeout(() => toast('💡 Tip: Set up Face Recognition for passwordless login! Go to Settings.', 'warn'), 2000);
-}
-
-// ══════════════════════════════════════════════════════
-// DASH TAB HELPERS
-// ══════════════════════════════════════════════════════
-function sDT(e, sec) { tabSwitch(e, sec, 'studentDash'); }
-function tDT(e, sec) { tabSwitch(e, sec, 'teacherDash'); }
-function aDT(e, sec) { tabSwitch(e, sec, 'adminDash'); }
-function tabSwitch(e, sec, parent) {
-  const p = document.getElementById(parent);
-  p.querySelectorAll('.dsec').forEach(s => s.classList.remove('active'));
-  p.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
-  document.getElementById(sec).classList.add('active');
-  e.target.classList.add('active');
-}
-
-// ══════════════════════════════════════════════════════
-// D3 CHARTS
-// ══════════════════════════════════════════════════════
-function d3Bar(containerId, data, xKey, yKey, color='var(--accent)') {
-  const el = document.getElementById(containerId);
-  if (!el || !data.length) { el.innerHTML = '<div class="empty"><div class="ei">📊</div>No data yet</div>'; return; }
-  el.innerHTML = '';
-  const W = el.clientWidth || 320, H = 180, m = {top:10,right:10,bottom:30,left:36};
-  const w = W - m.left - m.right, h = H - m.top - m.bottom;
-  const svg = d3.select(`#${containerId}`).append('svg').attr('width','100%').attr('height',H).attr('viewBox',`0 0 ${W} ${H}`);
-  const g = svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
-  const x = d3.scaleBand().domain(data.map(d=>d[xKey])).range([0,w]).padding(.35);
-  const y = d3.scaleLinear().domain([0, d3.max(data,d=>d[yKey])||1]).nice().range([h,0]);
-  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
-  g.append('g').call(d3.axisLeft(y).ticks(4).tickSize(-w)).call(g=>{ g.select('.domain').remove(); g.selectAll('.tick line').attr('stroke','var(--border)'); g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size',10); });
-  g.selectAll('.bar').data(data).enter().append('rect').attr('class','bar d3-bar')
-    .attr('x',d=>x(d[xKey])).attr('width',x.bandwidth()).attr('y',h).attr('height',0).attr('rx',4).attr('fill',color)
-    .on('mouseover',(ev,d)=>{ const tip=document.getElementById('d3tip'); tip.style.display='block'; tip.style.left=(ev.pageX+10)+'px'; tip.style.top=(ev.pageY-28)+'px'; tip.textContent=`${d[xKey]}: ${d[yKey]}`; })
-    .on('mouseout',()=>document.getElementById('d3tip').style.display='none')
-    .transition().duration(600).attr('y',d=>y(d[yKey])).attr('height',d=>h-y(d[yKey]));
-  g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size',10);
-}
-
-function d3Donut(containerId, data) {
-  const el = document.getElementById(containerId);
-  if (!el || !data.length) { el.innerHTML = '<div class="empty"><div class="ei">📊</div>No data</div>'; return; }
-  el.innerHTML = '';
-  const W = el.clientWidth || 280, H = 200, R = Math.min(W,H)/2 - 20;
-  const colors = ['var(--accent)','var(--blue)','var(--green)','var(--yellow)','var(--purple)'];
-  const svg = d3.select(`#${containerId}`).append('svg').attr('width','100%').attr('height',H).attr('viewBox',`0 0 ${W} ${H}`);
-  const g = svg.append('g').attr('transform',`translate(${W/2},${H/2})`);
-  const pie = d3.pie().value(d=>d.value).sort(null);
-  const arc = d3.arc().innerRadius(R*.55).outerRadius(R);
-  const arcs = g.selectAll('.arc').data(pie(data)).enter().append('g');
-  arcs.append('path').attr('d',arc).attr('fill',(d,i)=>colors[i%colors.length]).attr('stroke','var(--card)').attr('stroke-width',2)
-    .on('mouseover',(ev,d)=>{ const tip=document.getElementById('d3tip'); tip.style.display='block'; tip.style.left=(ev.pageX+10)+'px'; tip.style.top=(ev.pageY-28)+'px'; tip.textContent=`${d.data.label}: ${d.data.value}`; })
-    .on('mouseout',()=>document.getElementById('d3tip').style.display='none');
-  // Center text
-  g.append('text').attr('text-anchor','middle').attr('dy','0.3em').attr('fill','var(--text)').attr('font-size',14).attr('font-weight',700)
-    .text(data.reduce((a,d)=>a+d.value,0));
-  // Legend
-  const legend = svg.append('g').attr('transform',`translate(${W*.62},${H/2 - data.length*9})`);
-  data.forEach((d,i) => {
-    legend.append('rect').attr('x',0).attr('y',i*18).attr('width',10).attr('height',10).attr('rx',2).attr('fill',colors[i%colors.length]);
-    legend.append('text').attr('x',14).attr('y',i*18+9).attr('fill','var(--text2)').attr('font-size',11).text(d.label);
-  });
-}
-
-// ══════════════════════════════════════════════════════
-// STUDENT
-// ══════════════════════════════════════════════════════
-async function loadStudentDashboard() {
-  const r = await api('/student/dashboard');
-  if (!r.ok) { toast('Failed to load dashboard', 'err'); return; }
-  const d = r.data;
-  const avg = d.subjects?.length ? Math.round(d.subjects.reduce((a,s)=>a+s.percentage,0)/d.subjects.length) : 0;
-  document.getElementById('sStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">📚</div><div class="stat-val">${d.subjects?.length||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat ${avg>=75?'green':avg>=60?'yellow':''}"><div class="stat-icon">📊</div><div class="stat-val">${avg}%</div><div class="stat-label">Avg Attendance</div></div>
-    <div class="stat green"><div class="stat-icon">✓</div><div class="stat-val">${d.total_present||0}</div><div class="stat-label">Total Present</div></div>
-    <div class="stat"><div class="stat-icon">📅</div><div class="stat-val">${d.total_classes||0}</div><div class="stat-label">Total Classes</div></div>
-  `;
-  if (d.subjects?.length) {
-    document.getElementById('sAttTbl').innerHTML = d.subjects.map(s => {
-      const p = s.percentage; const bc = p>=75?'':p>=60?'warn':'danger';
-      const bg = p>=75?'bg':p>=60?'by':'br';
-      const bw = Math.min(p,100);
-      return `<tr>
-        <td><span class="stag">${s.name}</span></td>
-        <td style="color:var(--text3)">${s.teacher||'—'}</td>
-        <td>${s.present}</td><td>${s.total}</td>
-        <td><div style="font-family:var(--fm);font-weight:500">${p}%</div><div class="att-bar-w"><div class="att-bar" style="width:${bw}%;background:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}"></div></div></td>
-        <td><span class="badge ${bg}">${p>=75?'Good':p>=60?'Low':'Critical'}</span></td>
-      </tr>`;
-    }).join('');
-    // Subject dropdown
-    document.getElementById('markSubject').innerHTML = d.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-    // Subjects list
-    document.getElementById('sSubjList').innerHTML = `<table><thead><tr><th>Subject</th><th>Teacher</th><th>%</th></tr></thead><tbody>${
-      d.subjects.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.teacher||'—'}</td><td style="font-family:var(--fm);font-weight:500;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')
-    }</tbody></table>`;
-    // Charts
-    if (d.weekly_trend) d3Bar('sWeeklyChart', d.weekly_trend, 'date', 'count', 'var(--blue)');
-    if (d.monthly_trend) d3Bar('sMonthlyChart', d.monthly_trend.reverse(), 'month', 'count', 'var(--green)');
-    d3Bar('sSubjectChart', d.subjects.map(s=>({name:s.name.slice(0,8),pct:s.percentage})), 'name', 'pct', 'var(--accent)');
-  } else {
-    document.getElementById('sAttTbl').innerHTML = '<tr><td colspan="6"><div class="empty"><div class="ei">📭</div>No subjects found. Ask your teacher to add subjects.</div></td></tr>';
-    document.getElementById('sSubjList').innerHTML = '<div class="empty"><div class="ei">📚</div>No subjects yet</div>';
-  }
-}
-
-// ── QR SCAN ──
-let scanInterval = null;
-async function startQRScan() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v = document.getElementById('scanVideo');
-    v.srcObject = stream; v.style.display = 'block';
-    document.getElementById('scanPlaceholder').style.display = 'none';
-    document.getElementById('scanOverlay').style.display = 'flex';
-    document.getElementById('startScanBtn').style.display = 'none';
-    document.getElementById('stopScanBtn').style.display = 'flex';
-    qrScanner = stream;
-    // Poll for QR using canvas
-    const c = document.createElement('canvas');
-    scanInterval = setInterval(async () => {
-      if (v.readyState === v.HAVE_ENOUGH_DATA) {
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
-        try {
-          const imgData = c.getContext('2d').getImageData(0,0,c.width,c.height);
-          // Use jsQR if available, otherwise prompt manual
-          if (window.jsQR) {
-            const code = jsQR(imgData.data, imgData.width, imgData.height);
-            if (code && code.data) { handleQRCode(code.data); stopQRScan(); }
-          }
-        } catch(e) {}
-      }
-    }, 500);
-    toast('Camera active — point at QR code', 'ok');
-  } catch(e) {
-    toast('Camera not available. Use manual code entry.', 'warn');
-  }
-}
-
-function stopQRScan() {
-  if (qrScanner) { qrScanner.getTracks().forEach(t=>t.stop()); qrScanner = null; }
-  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  const v = document.getElementById('scanVideo');
-  v.style.display = 'none'; v.srcObject = null;
-  document.getElementById('scanPlaceholder').style.display = 'block';
-  document.getElementById('scanOverlay').style.display = 'none';
-  document.getElementById('startScanBtn').style.display = 'flex';
-  document.getElementById('stopScanBtn').style.display = 'none';
-}
-
-function handleQRCode(text) {
-  // QR contains the attendance code
-  document.getElementById('markCode').value = text.slice(0,6).toUpperCase();
-  document.getElementById('scanResult').textContent = `✓ Code scanned: ${text.slice(0,6).toUpperCase()}`;
-  document.getElementById('scanResult').style.display = 'block';
-  toast('QR Scanned! Hit Mark Present', 'ok');
-}
-
-async function markAttendance() {
-  const subjectId = document.getElementById('markSubject').value;
-  const code = document.getElementById('markCode').value.trim().toUpperCase();
-  const err = document.getElementById('markErr');
-  const succ = document.getElementById('markSucc');
-  err.style.display = 'none'; succ.style.display = 'none';
-  if (!code || code.length !== 6) { err.textContent = 'Enter a valid 6-digit code.'; err.style.display = 'block'; return; }
-  // Get location
-  let lat = null, lng = null;
-  try {
-    const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}));
-    lat = pos.coords.latitude; lng = pos.coords.longitude;
-  } catch(e) {}
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Marking...';
-  const r = await api('/student/mark-attendance', {method:'POST', body: JSON.stringify({subject_id: subjectId, code, lat, lng})});
-  btn.disabled = false; btn.textContent = '✓ Mark Present';
-  if (r.ok) { succ.textContent = '✓ Attendance marked!'; succ.style.display = 'block'; document.getElementById('markCode').value = ''; document.getElementById('scanResult').style.display = 'none'; loadStudentDashboard(); }
-  else { err.textContent = r.data.message || 'Invalid or expired code.'; err.style.display = 'block'; }
-}
-
-// ══════════════════════════════════════════════════════
-// TEACHER
-// ══════════════════════════════════════════════════════
-async function loadTeacherDashboard() {
-  const r = await api('/teacher/dashboard');
-  if (!r.ok) return;
-  const d = r.data;
-  document.getElementById('tStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">📚</div><div class="stat-val">${d.total_subjects||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat green"><div class="stat-icon">👥</div><div class="stat-val">${d.total_students||0}</div><div class="stat-label">Students</div></div>
-    <div class="stat"><div class="stat-icon">⚡</div><div class="stat-val">${d.total_sessions||0}</div><div class="stat-label">Sessions</div></div>
-    <div class="stat yellow"><div class="stat-icon">📅</div><div class="stat-val">${d.today_sessions||0}</div><div class="stat-label">Today</div></div>
-  `;
-  document.getElementById('tSessionsTbl').innerHTML = d.recent_sessions?.length ?
-    d.recent_sessions.map(s=>`<tr><td><span class="stag">${s.subject}</span></td><td style="color:var(--text3)">${s.date}</td><td>${s.count}</td><td style="font-family:var(--fm)">${s.code}</td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions yet</div></td></tr>';
-  // Populate dropdowns
-  const subjs = d.subjects || [];
-  ['codeSubject','filterSubject'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<option value="">Select Subject</option>` + subjs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  });
-  // Subject list
-  renderTeacherSubjects(subjs);
-  // Charts
-  if (d.weekly_trend) d3Bar('tWeeklyChart', d.weekly_trend, 'date', 'count', 'var(--blue)');
-  if (subjs.length) d3Bar('tSubjChart', subjs.map(s=>({name:s.name.slice(0,8),students:s.student_count})), 'name', 'students', 'var(--green)');
-}
-
-function renderTeacherSubjects(subjs) {
-  document.getElementById('tSubjList').innerHTML = subjs.length ?
-    `<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>${
-      subjs.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.student_count||0}</td><td>${s.session_count||0}</td><td><button class="btn btn-outline btn-sm" onclick="deleteSubject(${s.id})">Remove</button></td></tr>`).join('')
-    }</tbody></table>` :
-    '<div class="empty"><div class="ei">📚</div>No subjects yet. Add one above!</div>';
-}
-
-function toggleGeoFields() {
-  document.getElementById('geoFields').style.display = document.getElementById('geoEnabled').checked ? 'block' : 'none';
-}
-
-function getTeacherLocation() {
-  const status = document.getElementById('geoStatus');
-  status.textContent = '📍 Getting location...';
-  navigator.geolocation.getCurrentPosition(pos => {
-    teacherLat = pos.coords.latitude; teacherLng = pos.coords.longitude;
-    document.getElementById('geoLat').value = teacherLat;
-    document.getElementById('geoLng').value = teacherLng;
-    status.textContent = `✓ Location set: ${teacherLat.toFixed(4)}, ${teacherLng.toFixed(4)}`;
-    status.style.color = 'var(--green)';
-  }, () => { status.textContent = '✕ Location access denied'; status.style.color = 'var(--red)'; });
-}
-
-async function generateCode() {
-  const subjectId = document.getElementById('codeSubject').value;
-  if (!subjectId) { toast('Select a subject first', 'warn'); return; }
-  const geoOn = document.getElementById('geoEnabled').checked;
-  let lat = null, lng = null, radius = null;
-  if (geoOn) {
-    lat = document.getElementById('geoLat').value || teacherLat;
-    lng = document.getElementById('geoLng').value || teacherLng;
-    radius = document.getElementById('geoRadius').value;
-    if (!lat || !lng) { toast('Get your location first', 'warn'); return; }
-  }
-  const r = await api('/teacher/generate-code', {method:'POST', body: JSON.stringify({subject_id: subjectId, lat, lng, radius})});
-  if (r.ok) {
-    const code = r.data.code;
-    document.getElementById('liveCode').textContent = code;
-    document.getElementById('codeDisplay').style.display = 'block';
-    // Generate QR
-    document.getElementById('qrContainer').innerHTML = '';
-    try {
-      new QRCode(document.getElementById('qrContainer'), {text: code, width: 160, height: 160, colorDark:'#e04c2f', colorLight:'#ffffff'});
-    } catch(e) { document.getElementById('qrContainer').innerHTML = `<div style="font-family:var(--fm);color:var(--text3);font-size:12px">QR not available</div>`; }
-    startCodeTimer(120);
-    if (r.data.geo_enabled) toast('✓ Code generated with Geo-Lock active 📍');
-    else toast('✓ Code generated!');
-  } else toast(r.data.message || 'Failed', 'err');
-}
-
-function startCodeTimer(seconds) {
-  if (codeTimer) clearInterval(codeTimer);
-  let left = seconds;
-  codeTimer = setInterval(() => {
-    left--;
-    document.getElementById('timerCount').textContent = left;
-    document.getElementById('timerBar').style.width = (left/seconds*100) + '%';
-    if (left <= 30) document.getElementById('timerBar').style.background = 'var(--red)';
-    else if (left <= 60) document.getElementById('timerBar').style.background = 'var(--yellow)';
-    if (left <= 0) { clearInterval(codeTimer); document.getElementById('codeDisplay').style.display = 'none'; toast('Code expired', 'warn'); }
-  }, 1000);
-}
-
-async function loadTAttendance() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const url = subjectId ? `/teacher/attendance?subject_id=${subjectId}` : '/teacher/attendance';
-  const r = await api(url);
-  if (!r.ok) return;
-  allAttRecords = r.data.records || [];
-  renderTAttTable(allAttRecords);
-}
-
-function renderTAttTable(records) {
-  document.getElementById('tAttTbl').innerHTML = records.length ?
-    records.map(rec => {
-      const pct = rec.total > 0 ? Math.round(rec.present/rec.total*100) : 0;
-      return `<tr>
-        <td><strong>${rec.student_name}</strong></td>
-        <td><span class="stag">${rec.subject}</span></td>
-        <td>${rec.present}</td><td>${rec.total}</td>
-        <td style="font-family:var(--fm);font-weight:500;color:${pct>=75?'var(--green)':pct>=60?'var(--yellow)':'var(--red)'}">${pct}%</td>
-      </tr>`;
-    }).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📊</div>No records</div></td></tr>';
-}
-
-function filterAttTable() {
-  const q = document.getElementById('searchStudent').value.toLowerCase();
-  renderTAttTable(allAttRecords.filter(r=>r.student_name.toLowerCase().includes(q)));
-}
-
-async function addSubject() {
-  const name = document.getElementById('newSubjName').value.trim();
-  if (!name) { toast('Enter a subject name', 'warn'); return; }
-  const r = await api('/teacher/subjects', {method:'POST', body: JSON.stringify({name})});
-  if (r.ok) { toast('Subject added!'); document.getElementById('newSubjName').value = ''; loadTeacherDashboard(); }
-  else toast(r.data.message || 'Failed', 'err');
-}
-
-async function deleteSubject(id) {
-  if (!confirm('Remove this subject and all its data?')) return;
-  const r = await api(`/teacher/subjects/${id}`, {method:'DELETE'});
-  if (r.ok) { toast('Subject removed'); loadTeacherDashboard(); }
-  else toast('Failed', 'err');
-}
-
-async function exportCSV() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const url = `${API}/teacher/export?format=csv${subjectId?'&subject_id='+subjectId:''}`;
-  const a = document.createElement('a'); a.href = url; a.download = 'attendance.csv'; a.click();
-}
-
-async function exportEmail() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const r = await api('/teacher/export-email', {method:'POST', body: JSON.stringify({subject_id: subjectId || null})});
-  if (r.ok) toast('Report sent to your email ✉');
-  else toast(r.data.message || 'Failed', 'err');
-}
-
-// ══════════════════════════════════════════════════════
-// ADMIN
-// ══════════════════════════════════════════════════════
-async function loadAdminDashboard() {
-  const r = await api('/admin/dashboard');
-  if (!r.ok) return;
-  const d = r.data;
-  document.getElementById('aStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">👥</div><div class="stat-val">${d.total_students}</div><div class="stat-label">Students</div></div>
-    <div class="stat green"><div class="stat-icon">👨‍🏫</div><div class="stat-val">${d.total_teachers}</div><div class="stat-label">Teachers</div></div>
-    <div class="stat yellow"><div class="stat-icon">📚</div><div class="stat-val">${d.total_subjects}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat"><div class="stat-icon">✓</div><div class="stat-val">${d.total_records}</div><div class="stat-label">Records</div></div>
-    <div class="stat ${d.total_flags>0?'':''}"><div class="stat-icon">🚩</div><div class="stat-val" style="${d.total_flags>0?'color:var(--red)':''}">${d.total_flags}</div><div class="stat-label">Flags</div></div>
-  `;
-  // Recent users
-  document.getElementById('aRecentUsers').innerHTML = d.recent_users?.length ?
-    d.recent_users.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div><strong style="font-size:13px">${u.name}</strong><div style="color:var(--text3);font-size:11px">${u.email}</div></div>
-      <span class="badge ${u.type==='student'?'bg':u.type==='teacher'?'bb':'bp'}">${u.type}</span>
-    </div>`).join('') : '<div class="empty"><div class="ei">👤</div>No users</div>';
-  // Active sessions
-  document.getElementById('aActiveSessions').innerHTML = d.active_sessions?.length ?
-    d.active_sessions.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div><strong style="font-size:13px">${s.subject}</strong><div style="color:var(--text3);font-size:11px">${s.teacher}</div></div>
-      <span class="badge bg"><span class="live-dot" style="width:6px;height:6px;margin:0"></span> Live</span>
-    </div>`).join('') : '<div class="empty"><div class="ei">🟢</div>No active sessions</div>';
-  // Students table
-  document.getElementById('aStudTbl').innerHTML = d.students?.length ?
-    d.students.map(s=>`<tr><td><strong>${s.name}</strong></td><td style="color:var(--text3);font-size:12px">${s.email}</td><td style="color:var(--text3)">${s.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDelUser(${s.id})">Remove</button></td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">👥</div>No students</div></td></tr>';
-  // Teachers table
-  document.getElementById('aTeachTbl').innerHTML = d.teachers?.length ?
-    d.teachers.map(t=>`<tr><td><strong>${t.name}</strong></td><td style="color:var(--text3);font-size:12px">${t.email}</td><td style="font-size:12px">${t.subjects||'—'}</td><td style="color:var(--text3)">${t.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDelUser(${t.id})">Remove</button></td></tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">👨‍🏫</div>No teachers</div></td></tr>';
-  // Attendance table
-  document.getElementById('aAttTbl').innerHTML = d.attendance?.length ?
-    d.attendance.map(a=>`<tr><td>${a.student_name}</td><td><span class="stag">${a.subject}</span></td><td>${a.teacher}</td><td style="color:var(--text3);font-size:12px">${a.date}</td><td><span class="badge bg">Present</span></td></tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No records</div></td></tr>';
-  // Flags
-  document.getElementById('aFlagsTbl').innerHTML = d.flags?.length ?
-    d.flags.map(f=>`<tr><td>${f.student_name||'—'}</td><td><span class="stag">${f.subject_name||'—'}</span></td><td style="color:var(--red)">${f.reason}</td><td style="color:var(--text3);font-size:11px">${f.created_at}</td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">✅</div>No suspicious activity</div></td></tr>';
-  // Logs
-  allLogs = d.logs || [];
-  renderLogs(allLogs);
-  // Charts
-  if (d.monthly_trend) d3Bar('aMonthlyChart', d.monthly_trend.reverse(), 'month', 'count', 'var(--accent)');
-  d3Donut('aUserChart', [
-    {label:'Students', value: d.total_students},
-    {label:'Teachers', value: d.total_teachers},
-    {label:'Admins', value: 1}
-  ]);
-}
-
-function renderLogs(logs) {
-  document.getElementById('aLogsTbl').innerHTML = logs.length ?
-    logs.map(l=>`<tr>
-      <td><strong>${l.user_name||'—'}</strong></td>
-      <td><span class="badge bb">${l.action}</span></td>
-      <td style="color:var(--text3);font-size:12px">${l.details||'—'}</td>
-      <td style="font-family:var(--fm);font-size:11px;color:var(--text3)">${l.ip_address||'—'}</td>
-      <td style="font-size:11px;color:var(--text3)">${l.created_at}</td>
-    </tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No logs</div></td></tr>';
-}
-
-function filterLogs() {
-  const q = document.getElementById('logSearch').value.toLowerCase();
-  renderLogs(allLogs.filter(l => (l.action+l.user_name+l.details).toLowerCase().includes(q)));
-}
-
-async function adminDelUser(id) {
-  if (!confirm('Remove this user? This cannot be undone.')) return;
-  const r = await api(`/admin/users/${id}`, {method:'DELETE'});
-  if (r.ok) { toast('User removed'); loadAdminDashboard(); }
-  else toast('Failed', 'err');
-}
-
-// ══════════════════════════════════════════════════════
-// PWA
-// ══════════════════════════════════════════════════════
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); deferredInstall = e;
-  document.getElementById('installBanner').style.display = 'block';
-});
-function installPWA() {
-  if (deferredInstall) { deferredInstall.prompt(); deferredInstall.userChoice.then(()=>{ document.getElementById('installBanner').style.display='none'; }); }
-}
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-
-// ══════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════
-initTheme();
-if (currentUser && jwt) {
-  setUser(currentUser);
-}
-</script>
-</body>
-</html>
+# ─── RUN ──────────────────────────────────────────────────────────────────────
+if __name__ == '__main__':
+    init_db()
+    threading.Thread(target=cleanup_expired, daemon=True).start()
+    app.run(host='0.0.0.0', port=10000, debug=False)

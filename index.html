@@ -1,431 +1,986 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>SmartAttend</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0a0a0f;--bg2:#111118;--card:#16161f;--border:#2a2a3a;--accent:#e04c2f;--accent2:#ff7c5c;--green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--blue:#3498db;--text:#f0f0f5;--muted:#888899;--fh:'Syne',sans-serif;--fm:'Space Mono',monospace}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--fh);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
-nav{display:flex;justify-content:space-between;align-items:center;padding:18px 40px;background:rgba(10,10,15,.95);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
-.nav-logo{font-size:22px;font-weight:800;letter-spacing:-1px}.nav-logo span{color:var(--accent)}
-.btn{padding:9px 22px;border-radius:6px;font-family:var(--fh);font-weight:700;font-size:14px;cursor:pointer;border:none;transition:all .2s}
-.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
-.btn-sm{padding:6px 14px;font-size:12px}.btn-full{width:100%;margin-top:6px;padding:12px;font-size:15px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-#homePage{min-height:calc(100vh - 65px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:radial-gradient(ellipse at 50% 0%,rgba(224,76,47,.12) 0%,transparent 70%)}
-.hero-tag{display:inline-block;font-family:var(--fm);font-size:11px;letter-spacing:3px;color:var(--accent);border:1px solid var(--accent);padding:5px 14px;border-radius:20px;margin-bottom:28px;text-transform:uppercase}
-.hero-title{font-size:clamp(42px,8vw,80px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:20px}.hero-title span{color:var(--accent)}
-.hero-sub{font-size:17px;color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:40px}
-.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
-.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;max-width:900px;margin:70px auto 0;width:100%}
-.feature-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;transition:all .2s}.feature-card:hover{border-color:var(--accent);transform:translateY(-3px)}
-.fi{font-size:28px;margin-bottom:12px}.feature-card h3{font-size:15px;font-weight:700;margin-bottom:8px}.feature-card p{font-size:13px;color:var(--muted);line-height:1.6}
-#dashboard{display:none;padding:30px 40px;max-width:1100px;margin:0 auto}
-.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:16px}
-.dash-header h2{font-size:26px;font-weight:800}.dash-header h2 span{color:var(--accent)}
-.role-badge{font-family:var(--fm);font-size:11px;letter-spacing:2px;padding:4px 12px;border-radius:20px;text-transform:uppercase;background:var(--accent);color:#fff}
-.role-badge.teacher{background:var(--blue)}.role-badge.admin{background:#9b59b6}
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
-.stat-val{font-size:32px;font-weight:800;color:var(--accent);font-family:var(--fm)}.stat-val.green{color:var(--green)}.stat-val.yellow{color:var(--yellow)}.stat-val.blue{color:var(--blue)}
-.stat-label{font-size:12px;color:var(--muted);margin-top:4px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
-.card h3{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
-.cdot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{text-align:left;padding:10px 14px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:var(--fm)}
-td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
-tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.02)}
-.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--fm)}
-.bg{background:rgba(46,204,113,.15);color:var(--green)}.br{background:rgba(231,76,60,.15);color:var(--red)}.by{background:rgba(241,196,15,.15);color:var(--yellow)}
-.att-bar-wrap{margin-top:6px;background:var(--border);border-radius:4px;height:6px}.att-bar{height:6px;border-radius:4px;transition:width .5s}
-.code-display{background:var(--bg);border:2px solid var(--accent);border-radius:12px;padding:28px;text-align:center;margin-bottom:20px}
-.code-num{font-family:var(--fm);font-size:52px;font-weight:700;letter-spacing:10px;color:var(--accent)}
-.code-timer{font-family:var(--fm);font-size:14px;color:var(--muted);margin-top:10px}.code-timer span{color:var(--yellow);font-size:18px}
-.timer-bar-wrap{background:var(--border);border-radius:4px;height:4px;margin-top:12px}.timer-bar{height:4px;border-radius:4px;background:var(--accent);transition:width 1s linear}
-.fg{margin-bottom:16px}.fg label{display:block;font-size:12px;font-family:var(--fm);letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
-.fg input,.fg select{width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;transition:border-color .2s;outline:none}
-.fg input:focus,.fg select:focus{border-color:var(--accent)}.fg select option{background:var(--bg2)}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.err{color:var(--red);font-size:12px;margin-bottom:10px;font-family:var(--fm);display:none}.succ{color:var(--green);font-size:12px;margin-bottom:10px;font-family:var(--fm);display:none}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
-.modal.active{display:flex}
-.mbox{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:420px;padding:32px;position:relative;animation:popIn .2s ease}
-@keyframes popIn{from{transform:scale(.93) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-.mbox h2{font-size:22px;font-weight:800;margin-bottom:6px}.msub{font-size:13px;color:var(--muted);margin-bottom:22px}
-.mclose{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}.mclose:hover{color:var(--text)}
-.mtabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border)}
-.mtab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--fh)}
-.mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tc{display:none}.tc.active{display:block}
-.otp-row{display:flex;gap:10px;justify-content:center;margin:16px 0}
-.otp-d{width:48px;height:52px;text-align:center;font-size:22px;font-family:var(--fm);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none}
-.otp-d:focus{border-color:var(--accent)}
-.stag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-family:var(--fm);background:rgba(52,152,219,.15);color:var(--blue)}
-#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--card);border:1px solid var(--border);padding:12px 24px;border-radius:30px;font-size:14px;z-index:9999;transition:transform .3s ease;white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.4)}
-#toast.show{transform:translateX(-50%) translateY(0)}#toast.ok{border-color:var(--green);color:var(--green)}#toast.err{border-color:var(--red);color:var(--red)}
-.dtabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
-.dtab{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:var(--fh);transition:all .2s}
-.dtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}.dtab:hover:not(.active){border-color:var(--accent);color:var(--accent)}
-.dsec{display:none}.dsec.active{display:block}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.empty{text-align:center;padding:40px;color:var(--muted);font-size:14px}.ei{font-size:36px;margin-bottom:10px}
-#userInfo{display:none;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
-#logoutBtn{display:none}
-@media(max-width:680px){nav{padding:14px 20px}#dashboard{padding:20px}.frow,.g2{grid-template-columns:1fr}.hero-title{font-size:36px}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartAttend</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #111118;
+      --card: #16161f;
+      --border: #2a2a3a;
+      --accent: #e04c2f;
+      --accent2: #ff7c5c;
+      --green: #2ecc71;
+      --yellow: #f1c40f;
+      --red: #e74c3c;
+      --blue: #3498db;
+      --text: #f0f0f5;
+      --muted: #888899;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-head); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+    /* NAV */
+    nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 40px; background: rgba(10,10,15,0.95);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+    .nav-logo { font-size: 22px; font-weight: 800; letter-spacing: -1px; }
+    .nav-logo span { color: var(--accent); }
+    .nav-btns { display: flex; gap: 12px; }
+    .btn {
+      padding: 9px 22px; border-radius: 6px; font-family: var(--font-head);
+      font-weight: 700; font-size: 14px; cursor: pointer; border: none;
+      transition: all 0.2s;
+    }
+    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-green:hover { opacity: 0.85; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-blue:hover { opacity: 0.85; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-full { width: 100%; margin-top: 6px; padding: 12px; font-size: 15px; }
+
+    /* HERO */
+    #homePage {
+      min-height: calc(100vh - 65px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 60px 20px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(224,76,47,0.12) 0%, transparent 70%);
+    }
+    .hero-tag {
+      display: inline-block; font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 3px; color: var(--accent);
+      border: 1px solid var(--accent); padding: 5px 14px; border-radius: 20px;
+      margin-bottom: 28px; text-transform: uppercase;
+    }
+    .hero-title {
+      font-size: clamp(42px, 8vw, 80px); font-weight: 800;
+      line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px;
+    }
+    .hero-title span { color: var(--accent); }
+    .hero-sub {
+      font-size: 17px; color: var(--muted); max-width: 520px;
+      line-height: 1.7; margin-bottom: 40px; font-weight: 400;
+    }
+    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px; max-width: 900px; margin: 70px auto 0; width: 100%;
+    }
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* DASHBOARD */
+    #dashboard { display: none; padding: 30px 40px; max-width: 1100px; margin: 0 auto; }
+    .dash-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 30px; flex-wrap: wrap; gap: 16px;
+    }
+    .dash-header h2 { font-size: 26px; font-weight: 800; }
+    .dash-header h2 span { color: var(--accent); }
+    .role-badge {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+      padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
+      background: var(--accent); color: #fff;
+    }
+    .role-badge.teacher { background: var(--blue); }
+    .role-badge.admin { background: #9b59b6; }
+
+    /* STATS ROW */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px; text-align: center;
+    }
+    .stat-card .stat-val { font-size: 32px; font-weight: 800; color: var(--accent); font-family: var(--font-mono); }
+    .stat-card .stat-val.green { color: var(--green); }
+    .stat-card .stat-val.yellow { color: var(--yellow); }
+    .stat-card .stat-val.blue { color: var(--blue); }
+    .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* CARDS */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    }
+    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    .card h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 10px 14px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); font-family: var(--font-mono); }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+    }
+    .badge-green { background: rgba(46,204,113,0.15); color: var(--green); }
+    .badge-red { background: rgba(231,76,60,0.15); color: var(--red); }
+    .badge-yellow { background: rgba(241,196,15,0.15); color: var(--yellow); }
+
+    /* ATTENDANCE BAR */
+    .att-bar-wrap { margin-top: 6px; background: var(--border); border-radius: 4px; height: 6px; }
+    .att-bar { height: 6px; border-radius: 4px; background: var(--green); transition: width 0.5s; }
+    .att-bar.warn { background: var(--yellow); }
+    .att-bar.danger { background: var(--red); }
+
+    /* CODE BOX */
+    .code-display {
+      background: var(--bg); border: 2px solid var(--accent);
+      border-radius: 12px; padding: 28px; text-align: center; margin-bottom: 20px;
+    }
+    .code-num {
+      font-family: var(--font-mono); font-size: 52px; font-weight: 700;
+      letter-spacing: 10px; color: var(--accent);
+    }
+    .code-timer { font-family: var(--font-mono); font-size: 14px; color: var(--muted); margin-top: 10px; }
+    .code-timer span { color: var(--yellow); font-size: 18px; }
+    .timer-bar-wrap { background: var(--border); border-radius: 4px; height: 4px; margin-top: 12px; }
+    .timer-bar { height: 4px; border-radius: 4px; background: var(--accent); transition: width 1s linear; }
+
+    /* FORM ELEMENTS */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-family: var(--font-mono); letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 11px 14px; background: var(--bg);
+      border: 1.5px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: var(--font-head); font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+    .form-group select option { background: var(--bg2); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* MODAL */
+    .modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.75); display: none; align-items: center;
+      justify-content: center; z-index: 999; backdrop-filter: blur(4px);
+    }
+    .modal.active { display: flex; }
+    .modal-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; width: 100%; max-width: 420px;
+      padding: 32px; position: relative; animation: popIn 0.2s ease;
+    }
+    @keyframes popIn { from { transform: scale(0.93) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    .modal-box h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .modal-box p.sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+    .modal-close {
+      position: absolute; top: 16px; right: 18px;
+      background: none; border: none; color: var(--muted);
+      font-size: 20px; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .modal-tab {
+      flex: 1; padding: 10px; text-align: center; font-size: 13px;
+      font-weight: 700; cursor: pointer; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;
+      font-family: var(--font-head);
+    }
+    .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    .err-msg { color: var(--red); font-size: 12px; margin-top: -8px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
+    .succ-msg { color: var(--green); font-size: 12px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
+
+    /* OTP INPUT */
+    .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 16px 0; }
+    .otp-inputs input {
+      width: 48px; height: 52px; text-align: center;
+      font-size: 22px; font-family: var(--font-mono); font-weight: 700;
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: 8px; color: var(--text);
+    }
+    .otp-inputs input:focus { outline: none; border-color: var(--accent); }
+
+    /* SUBJECT TAG */
+    .subj-tag {
+      display: inline-block; padding: 3px 10px; border-radius: 4px;
+      font-size: 11px; font-family: var(--font-mono);
+      background: rgba(52,152,219,0.15); color: var(--blue);
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px);
+      background: var(--card); border: 1px solid var(--border);
+      padding: 12px 24px; border-radius: 30px; font-size: 14px;
+      z-index: 9999; transition: transform 0.3s ease; white-space: nowrap;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error { border-color: var(--red); color: var(--red); }
+
+    /* SECTION TABS (dashboard) */
+    .dash-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .dash-tab {
+      padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--border); background: transparent;
+      color: var(--muted); font-family: var(--font-head); transition: all 0.2s;
+    }
+    .dash-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .dash-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+    .dash-section { display: none; }
+    .dash-section.active { display: block; }
+
+    /* ATTENDANCE % CIRCLE */
+    .att-circle {
+      width: 90px; height: 90px; border-radius: 50%;
+      border: 5px solid var(--border); display: flex;
+      flex-direction: column; align-items: center; justify-content: center;
+      font-family: var(--font-mono);
+    }
+    .att-circle .pct { font-size: 20px; font-weight: 700; }
+    .att-circle .lbl { font-size: 9px; color: var(--muted); }
+
+    /* GRID 2COL */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media(max-width:680px) {
+      .grid2 { grid-template-columns: 1fr; }
+      nav { padding: 14px 20px; }
+      #dashboard { padding: 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .hero-title { font-size: 36px; }
+    }
+
+    /* EMPTY STATE */
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+    .empty .e-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* LOGOUT BTN in nav */
+    #logoutBtn { display: none; }
+    #userInfo { display: none; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+    #userInfo strong { color: var(--text); }
+  </style>
 </head>
 <body>
+
+<!-- NAV -->
 <nav>
   <div class="nav-logo">Smart<span>Attend</span></div>
   <div style="display:flex;align-items:center;gap:12px">
-    <div id="userInfo">Welcome, <strong id="navName">—</strong></div>
-    <div style="display:flex;gap:8px" id="authBtns">
-      <button class="btn btn-outline" onclick="openModal('login')">Login</button>
-      <button class="btn btn-primary" onclick="openModal('register')">Register</button>
+    <div id="userInfo">
+      Welcome, <strong id="navName">—</strong>
+    </div>
+    <div class="nav-btns" id="authBtns">
+      <button class="btn btn-outline" onclick="openAuth('login')">Login</button>
+      <button class="btn btn-primary" onclick="openAuth('register')">Register</button>
     </div>
     <button class="btn btn-outline btn-sm" id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 </nav>
 
+<!-- HOME PAGE -->
 <div id="homePage">
   <div class="hero-tag">✦ Attendance Reinvented</div>
   <h1 class="hero-title">Attendance that<br>actually <span>works</span></h1>
   <p class="hero-sub">Real-time code-based attendance for students, teachers, and admins. Secure. Fast. Built for modern classrooms.</p>
   <div class="hero-ctas">
-    <button class="btn btn-primary" onclick="openModal('register')" style="padding:12px 28px;font-size:15px">Get Started Free</button>
-    <button class="btn btn-outline" onclick="openModal('login')" style="padding:12px 28px;font-size:15px">Sign In</button>
+    <button class="btn btn-primary" onclick="openAuth('register')">Get Started Free</button>
+    <button class="btn btn-outline" onclick="openAuth('login')">Sign In</button>
   </div>
   <div class="features">
-    <div class="feature-card"><div class="fi">⏱️</div><h3>2-Minute Codes</h3><p>Teachers generate live codes that expire in 2 minutes — no proxy attendance possible.</p></div>
-    <div class="feature-card"><div class="fi">📊</div><h3>Per-Subject Tracking</h3><p>Track attendance separately for every subject with real-time percentage updates.</p></div>
-    <div class="feature-card"><div class="fi">🔐</div><h3>OTP Verified Login</h3><p>Every login is verified with a one-time password sent directly to your email.</p></div>
-    <div class="feature-card"><div class="fi">🛡️</div><h3>Admin Control</h3><p>Administrators can manage all students, teachers, and attendance records seamlessly.</p></div>
+    <div class="feature-card">
+      <div class="feature-icon">⏱️</div>
+      <h3>2-Minute Codes</h3>
+      <p>Teachers generate live codes that expire in 2 minutes — no proxy attendance possible.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Per-Subject Tracking</h3>
+      <p>Track attendance separately for every subject with real-time percentage updates.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <h3>OTP Verified Login</h3>
+      <p>Every login is verified with a one-time password sent directly to your email.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>Admin Control</h3>
+      <p>Administrators can manage all students, teachers, and attendance records seamlessly.</p>
+    </div>
   </div>
 </div>
 
+<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="dash-header">
-    <div><h2 id="dashTitle">Dashboard <span>—</span></h2><div style="margin-top:6px;font-size:13px;color:var(--muted)" id="dashSub"></div></div>
-    <span class="role-badge" id="roleBadge">Student</span>
+    <div>
+      <h2 id="dashTitle">Dashboard <span>—</span></h2>
+      <div style="margin-top:6px;font-size:13px;color:var(--muted)" id="dashSubtitle"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="role-badge" id="roleBadge">Student</span>
+    </div>
   </div>
 
-  <!-- STUDENT -->
-  <div id="studentDash" class="dsec">
-    <div class="dtabs">
-      <button class="dtab active" onclick="dTab('sOv','studentDash',this)">Overview</button>
-      <button class="dtab" onclick="dTab('sMark','studentDash',this)">Mark Attendance</button>
-      <button class="dtab" onclick="dTab('sSubj','studentDash',this)">My Subjects</button>
+  <!-- STUDENT DASHBOARD -->
+  <div id="studentDash" class="dash-section">
+    <div class="dash-tabs">
+      <button class="dash-tab active" onclick="showDashTab('sOverview','studentDash')">Overview</button>
+      <button class="dash-tab" onclick="showDashTab('sMarkAtt','studentDash')">Mark Attendance</button>
+      <button class="dash-tab" onclick="showDashTab('sSubjects','studentDash')">My Subjects</button>
     </div>
-    <div id="sOv" class="dsec active">
-      <div class="stats-row" id="sStats"></div>
-      <div class="card"><h3><span class="cdot"></span> Attendance Summary</h3>
-        <table><thead><tr><th>Subject</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead>
-        <tbody id="sAttTbl"><tr><td colspan="5"><div class="empty"><div class="ei">📭</div>Loading...</div></td></tr></tbody></table>
+    <!-- Overview -->
+    <div id="sOverview" class="dash-section active">
+      <div class="stats-row" id="studentStats"></div>
+      <div class="card">
+        <h3><span class="dot"></span> Attendance Summary</h3>
+        <table>
+          <thead><tr><th>Subject</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead>
+          <tbody id="studentAttTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">📭</div>No records yet</div></td></tr></tbody>
+        </table>
       </div>
     </div>
-    <div id="sMark" class="dsec">
+    <!-- Mark Attendance -->
+    <div id="sMarkAtt" class="dash-section">
       <div class="card" style="max-width:480px;margin:0 auto">
-        <h3><span class="cdot"></span> Mark Attendance</h3>
-        <div class="fg"><label>Subject</label><select id="markSubject"></select></div>
-        <div class="fg"><label>6-Digit Code</label><input id="markCode" maxlength="6" placeholder="XXXXXX" style="font-family:var(--fm);font-size:22px;letter-spacing:6px;text-align:center;text-transform:uppercase"></div>
-        <div class="err" id="markErr"></div><div class="succ" id="markSucc"></div>
+        <h3><span class="dot"></span> Mark Your Attendance</h3>
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="markSubject"></select>
+        </div>
+        <div class="form-group">
+          <label>6-Digit Attendance Code</label>
+          <input id="markCode" maxlength="6" placeholder="Enter code given by teacher" style="font-family:var(--font-mono);font-size:22px;letter-spacing:6px;text-align:center">
+        </div>
+        <div class="err-msg" id="markErr"></div>
+        <div class="succ-msg" id="markSucc"></div>
         <button class="btn btn-primary btn-full" onclick="markAttendance()">✓ Mark Present</button>
       </div>
     </div>
-    <div id="sSubj" class="dsec">
-      <div class="card"><h3><span class="cdot"></span> My Subjects</h3><div id="sSubjList"></div></div>
+    <!-- Subjects -->
+    <div id="sSubjects" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> My Enrolled Subjects</h3>
+        <div id="studentSubjectList"></div>
+      </div>
     </div>
   </div>
 
-  <!-- TEACHER -->
-  <div id="teacherDash" class="dsec">
-    <div class="dtabs">
-      <button class="dtab active" onclick="dTab('tOv','teacherDash',this)">Overview</button>
-      <button class="dtab" onclick="dTab('tCode','teacherDash',this)">Generate Code</button>
-      <button class="dtab" onclick="dTab('tAtt','teacherDash',this)">View Attendance</button>
-      <button class="dtab" onclick="dTab('tSubj','teacherDash',this)">Subjects</button>
+  <!-- TEACHER DASHBOARD -->
+  <div id="teacherDash" class="dash-section">
+    <div class="dash-tabs">
+      <button class="dash-tab active" onclick="showDashTab('tOverview','teacherDash')">Overview</button>
+      <button class="dash-tab" onclick="showDashTab('tGenCode','teacherDash')">Generate Code</button>
+      <button class="dash-tab" onclick="showDashTab('tViewAtt','teacherDash')">View Attendance</button>
+      <button class="dash-tab" onclick="showDashTab('tSubjects','teacherDash')">Subjects</button>
     </div>
-    <div id="tOv" class="dsec active">
-      <div class="stats-row" id="tStats"></div>
-      <div class="card"><h3><span class="cdot"></span> Recent Sessions</h3>
-        <table><thead><tr><th>Subject</th><th>Date</th><th>Students</th><th>Code</th></tr></thead>
-        <tbody id="tSessTbl"><tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions yet</div></td></tr></tbody></table>
+    <!-- Overview -->
+    <div id="tOverview" class="dash-section active">
+      <div class="stats-row" id="teacherStats"></div>
+      <div class="card">
+        <h3><span class="dot"></span> Recent Attendance Sessions</h3>
+        <table>
+          <thead><tr><th>Subject</th><th>Date</th><th>Students Present</th><th>Code</th></tr></thead>
+          <tbody id="teacherSessionsTable"><tr><td colspan="4"><div class="empty"><div class="e-icon">📭</div>No sessions yet</div></td></tr></tbody>
+        </table>
       </div>
     </div>
-    <div id="tCode" class="dsec">
+    <!-- Generate Code -->
+    <div id="tGenCode" class="dash-section">
       <div class="card" style="max-width:480px;margin:0 auto">
-        <h3><span class="cdot"></span> Generate Code</h3>
-        <div class="fg"><label>Subject</label><select id="codeSubject"></select></div>
-        <button class="btn btn-primary btn-full" onclick="generateCode()">⚡ Generate Code</button>
+        <h3><span class="dot"></span> Generate Attendance Code</h3>
+        <div class="form-group">
+          <label>Select Subject</label>
+          <select id="codeSubject"></select>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="generateCode()" id="genCodeBtn">⚡ Generate Code</button>
         <div id="codeDisplay" style="display:none;margin-top:20px">
           <div class="code-display">
-            <div style="font-size:12px;font-family:var(--fm);color:var(--muted);letter-spacing:2px;margin-bottom:8px">ATTENDANCE CODE</div>
+            <div style="font-size:12px;font-family:var(--font-mono);color:var(--muted);letter-spacing:2px;margin-bottom:8px">ATTENDANCE CODE</div>
             <div class="code-num" id="liveCode">------</div>
             <div class="code-timer">Expires in <span id="timerCount">120</span>s</div>
             <div class="timer-bar-wrap"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
           </div>
-          <p style="text-align:center;font-size:13px;color:var(--muted)">Share this code with students. Expires in 2 minutes.</p>
+          <p style="text-align:center;font-size:13px;color:var(--muted)">Share this code with your students. It expires automatically.</p>
         </div>
       </div>
     </div>
-    <div id="tAtt" class="dsec">
-      <div class="card"><h3><span class="cdot"></span> Student Records</h3>
-        <div style="margin-bottom:16px"><div class="fg" style="margin:0"><label>Filter Subject</label><select id="filterSubject" onchange="loadTAtt()"><option value="">All Subjects</option></select></div></div>
-        <table><thead><tr><th>Student</th><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead>
-        <tbody id="tAttTbl"><tr><td colspan="5"><div class="empty"><div class="ei">📊</div>Select subject</div></td></tr></tbody></table>
+    <!-- View Attendance -->
+    <div id="tViewAtt" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> Student Attendance Records</h3>
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          <div class="form-group" style="margin:0;flex:1;min-width:160px">
+            <label>Filter by Subject</label>
+            <select id="filterSubject" onchange="loadTeacherAttendance()"></select>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Student</th><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead>
+          <tbody id="teacherAttTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">📊</div>Select a subject to view</div></td></tr></tbody>
+        </table>
       </div>
     </div>
-    <div id="tSubj" class="dsec">
-      <div class="card"><h3><span class="cdot"></span> Manage Subjects</h3>
+    <!-- Subjects -->
+    <div id="tSubjects" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> Manage Subjects</h3>
         <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-          <input id="newSubj" placeholder="Subject name e.g. Mathematics" style="flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;min-width:180px;outline:none">
-          <button class="btn btn-primary" onclick="addSubject()">+ Add</button>
+          <input id="newSubjectName" placeholder="Subject name (e.g. Mathematics)" style="flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-head);font-size:14px;min-width:180px">
+          <button class="btn btn-primary" onclick="addSubject()">+ Add Subject</button>
         </div>
-        <div id="tSubjList"></div>
+        <div id="teacherSubjectList"></div>
       </div>
     </div>
   </div>
 
-  <!-- ADMIN -->
-  <div id="adminDash" class="dsec">
-    <div class="dtabs">
-      <button class="dtab active" onclick="dTab('aOv','adminDash',this)">Overview</button>
-      <button class="dtab" onclick="dTab('aStudents','adminDash',this)">Students</button>
-      <button class="dtab" onclick="dTab('aTeachers','adminDash',this)">Teachers</button>
-      <button class="dtab" onclick="dTab('aAtt','adminDash',this)">Attendance</button>
+  <!-- ADMIN DASHBOARD -->
+  <div id="adminDash" class="dash-section">
+    <div class="dash-tabs">
+      <button class="dash-tab active" onclick="showDashTab('aOverview','adminDash')">Overview</button>
+      <button class="dash-tab" onclick="showDashTab('aStudents','adminDash')">Students</button>
+      <button class="dash-tab" onclick="showDashTab('aTeachers','adminDash')">Teachers</button>
+      <button class="dash-tab" onclick="showDashTab('aAttendance','adminDash')">All Attendance</button>
     </div>
-    <div id="aOv" class="dsec active">
-      <div class="stats-row" id="aStats"></div>
-      <div class="g2">
-        <div class="card"><h3><span class="cdot"></span> Recent Users</h3><div id="aUsers"></div></div>
-        <div class="card"><h3><span class="cdot"></span> Active Sessions</h3><div id="aSess"></div></div>
+    <!-- Overview -->
+    <div id="aOverview" class="dash-section active">
+      <div class="stats-row" id="adminStats"></div>
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="dot"></span> Recent Registrations</h3>
+          <div id="adminRecentUsers"></div>
+        </div>
+        <div class="card">
+          <h3><span class="dot"></span> Active Sessions Today</h3>
+          <div id="adminActiveSessions"></div>
+        </div>
       </div>
     </div>
-    <div id="aStudents" class="dsec"><div class="card"><h3><span class="cdot"></span> All Students</h3>
-      <table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aStudTbl"></tbody></table></div>
+    <!-- Students -->
+    <div id="aStudents" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> All Students</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="adminStudentTable"><tr><td colspan="4"><div class="empty"><div class="e-icon">👥</div>Loading...</div></td></tr></tbody>
+        </table>
+      </div>
     </div>
-    <div id="aTeachers" class="dsec"><div class="card"><h3><span class="cdot"></span> All Teachers</h3>
-      <table><thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aTeachTbl"></tbody></table></div>
+    <!-- Teachers -->
+    <div id="aTeachers" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> All Teachers</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="adminTeacherTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">👨‍🏫</div>Loading...</div></td></tr></tbody>
+        </table>
+      </div>
     </div>
-    <div id="aAtt" class="dsec"><div class="card"><h3><span class="cdot"></span> All Attendance</h3>
-      <table><thead><tr><th>Student</th><th>Subject</th><th>Teacher</th><th>Date</th><th>Status</th></tr></thead><tbody id="aAttTbl"></tbody></table></div>
+    <!-- All Attendance -->
+    <div id="aAttendance" class="dash-section">
+      <div class="card">
+        <h3><span class="dot"></span> All Attendance Records</h3>
+        <table>
+          <thead><tr><th>Student</th><th>Subject</th><th>Teacher</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="adminAttTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">📋</div>Loading...</div></td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- AUTH MODAL -->
 <div class="modal" id="authModal">
-  <div class="mbox">
-    <button class="mclose" onclick="closeModal()">✕</button>
-    <div class="mtabs">
-      <button class="mtab active" id="mLogin" onclick="switchTab('login')">Sign In</button>
-      <button class="mtab" id="mReg" onclick="switchTab('register')">Register</button>
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+      <button class="modal-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
     </div>
-    <div class="tc active" id="tcLogin">
-      <h2>Welcome back</h2><p class="msub">Enter your credentials to continue</p>
-      <div class="fg"><label>Email</label><input id="lEmail" type="email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input id="lPass" type="password" placeholder="••••••••"></div>
-      <div class="err" id="loginErr"></div>
+
+    <!-- LOGIN TAB -->
+    <div class="tab-content active" id="loginTab">
+      <h2>Welcome back</h2>
+      <p class="sub">Enter your credentials to continue</p>
+      <div class="form-group"><label>Email Address</label><input id="l_email" type="email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input id="l_pass" type="password" placeholder="••••••••"></div>
+      <div class="err-msg" id="loginErr">Invalid credentials. Try again.</div>
       <button class="btn btn-primary btn-full" onclick="login()">Continue →</button>
     </div>
-    <div class="tc" id="tcReg">
-      <h2>Create account</h2><p class="msub">Join SmartAttend today</p>
-      <div class="frow">
-        <div class="fg"><label>Full Name</label><input id="rName" placeholder="John Doe"></div>
-        <div class="fg"><label>Account Type</label><select id="rType"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></div>
+
+    <!-- REGISTER TAB -->
+    <div class="tab-content" id="registerTab">
+      <h2>Create account</h2>
+      <p class="sub">Join SmartAttend today</p>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name</label><input id="r_name" placeholder="John Doe"></div>
+        <div class="form-group"><label>Account Type</label>
+          <select id="r_type">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
       </div>
-      <div class="fg"><label>Email</label><input id="rEmail" type="email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input id="rPass" type="password" placeholder="Min. 6 characters"></div>
-      <div class="err" id="regErr"></div>
+      <div class="form-group"><label>Email Address</label><input id="r_email" type="email" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input id="r_pass" type="password" placeholder="Min. 6 characters"></div>
+      <div class="err-msg" id="regErr"></div>
       <button class="btn btn-primary btn-full" onclick="register()">Create Account →</button>
     </div>
-    <div class="tc" id="tcOTP">
-      <h2>Verify email</h2><p class="msub" id="otpSub">OTP sent to your email</p>
-      <div class="otp-row">
-        <input class="otp-d" maxlength="1" oninput="otpN(this,0)"><input class="otp-d" maxlength="1" oninput="otpN(this,1)">
-        <input class="otp-d" maxlength="1" oninput="otpN(this,2)"><input class="otp-d" maxlength="1" oninput="otpN(this,3)">
-        <input class="otp-d" maxlength="1" oninput="otpN(this,4)"><input class="otp-d" maxlength="1" oninput="otpN(this,5)">
+
+    <!-- OTP TAB -->
+    <div class="tab-content" id="otpTab">
+      <h2>Verify your email</h2>
+      <p class="sub" id="otpSubtitle">We sent a 6-digit OTP to your email</p>
+      <div class="otp-inputs">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,0)">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,1)">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,2)">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,3)">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,4)">
+        <input class="otp-digit" maxlength="1" oninput="otpNext(this,5)">
       </div>
-      <div class="err" id="otpErr"></div><div class="succ" id="otpSucc"></div>
+      <div class="err-msg" id="otpErr"></div>
+      <div class="succ-msg" id="otpSucc"></div>
       <button class="btn btn-primary btn-full" onclick="verifyOTP()">Verify & Continue →</button>
       <button class="btn btn-outline btn-full" style="margin-top:8px" onclick="resendOTP()">Resend OTP</button>
     </div>
   </div>
 </div>
+
+<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
-const API='https://code-mark-attendance-ja7p.onrender.com';
-let user=null,jwt=localStorage.getItem('sa_token')||'',otpEmail='',codeTimer=null;
+// ========== STATE ==========
+let currentUser = null;
+let otpPendingEmail = '';
+let otpPendingAction = ''; // 'login' | 'register'
+let codeTimer = null;
+const API = '';  // Flask runs on same origin
 
-async function req(path,opts={}){
-  const h={'Content-Type':'application/json'};
-  if(jwt) h['Authorization']=`Bearer ${jwt}`;
-  try{const r=await fetch(API+path,{...opts,headers:{...h,...(opts.headers||{})}});const d=await r.json().catch(()=>({}));return{ok:r.ok,data:d};}
-  catch(e){return{ok:false,data:{message:'Network error'}};}
+// ========== TOAST ==========
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => t.className = '', 3000);
 }
 
-function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
-
-function openModal(tab){document.getElementById('authModal').classList.add('active');switchTab(tab);}
-function closeModal(){document.getElementById('authModal').classList.remove('active');}
-function switchTab(tab){
-  ['tcLogin','tcReg','tcOTP'].forEach(t=>document.getElementById(t).classList.remove('active'));
-  ['mLogin','mReg'].forEach(t=>document.getElementById(t)?.classList.remove('active'));
-  if(tab==='login'){document.getElementById('tcLogin').classList.add('active');document.getElementById('mLogin').classList.add('active');}
-  else if(tab==='register'){document.getElementById('tcReg').classList.add('active');document.getElementById('mReg').classList.add('active');}
-  else if(tab==='otp') document.getElementById('tcOTP').classList.add('active');
+// ========== MODAL ==========
+function openAuth(tab) {
+  document.getElementById('authModal').classList.add('active');
+  switchTab(tab);
+}
+function closeModal() {
+  document.getElementById('authModal').classList.remove('active');
+}
+function switchTab(tab) {
+  ['loginTab','registerTab','otpTab'].forEach(t => document.getElementById(t).classList.remove('active'));
+  ['tabLogin','tabRegister'].forEach(t => document.getElementById(t)?.classList.remove('active'));
+  if (tab === 'login') { document.getElementById('loginTab').classList.add('active'); document.getElementById('tabLogin').classList.add('active'); }
+  else if (tab === 'register') { document.getElementById('registerTab').classList.add('active'); document.getElementById('tabRegister').classList.add('active'); }
+  else if (tab === 'otp') { document.getElementById('otpTab').classList.add('active'); }
 }
 
-function otpN(el,idx){el.value=el.value.replace(/\D/g,'');if(el.value&&idx<5)document.querySelectorAll('.otp-d')[idx+1].focus();}
-function getOTP(){return[...document.querySelectorAll('.otp-d')].map(i=>i.value).join('');}
-function clearOTP(){document.querySelectorAll('.otp-d').forEach(i=>i.value='');document.querySelectorAll('.otp-d')[0].focus();}
-
-async function register(){
-  const name=document.getElementById('rName').value.trim(),email=document.getElementById('rEmail').value.trim().toLowerCase(),pass=document.getElementById('rPass').value,type=document.getElementById('rType').value;
-  const err=document.getElementById('regErr');err.style.display='none';
-  if(!name||!email||!pass){err.textContent='All fields required.';err.style.display='block';return;}
-  if(pass.length<6){err.textContent='Password min 6 chars.';err.style.display='block';return;}
-  const btn=event.target;btn.disabled=true;btn.textContent='Sending OTP...';
-  const r=await req('/register',{method:'POST',body:JSON.stringify({name,email,password:pass,type})});
-  btn.disabled=false;btn.textContent='Create Account →';
-  if(r.ok){otpEmail=email;document.getElementById('otpSub').textContent=`OTP sent to ${email}`;clearOTP();switchTab('otp');toast('OTP sent! Check your email ✉');}
-  else{err.textContent=r.data.message||'Registration failed.';err.style.display='block';}
+// ========== OTP INPUTS ==========
+function otpNext(el, idx) {
+  if (el.value.length === 1 && idx < 5) {
+    document.querySelectorAll('.otp-digit')[idx + 1].focus();
+  }
+}
+function getOTPValue() {
+  return [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+}
+function clearOTPInputs() {
+  document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
+  document.querySelectorAll('.otp-digit')[0].focus();
 }
 
-async function login(){
-  const email=document.getElementById('lEmail').value.trim().toLowerCase(),pass=document.getElementById('lPass').value;
-  const err=document.getElementById('loginErr');err.style.display='none';
-  const btn=event.target;btn.disabled=true;btn.textContent='Sending OTP...';
-  const r=await req('/login',{method:'POST',body:JSON.stringify({email,password:pass})});
-  btn.disabled=false;btn.textContent='Continue →';
-  if(r.ok){otpEmail=email;document.getElementById('otpSub').textContent=`OTP sent to ${email}`;clearOTP();switchTab('otp');toast('OTP sent! Check your email ✉');}
-  else{err.textContent=r.data.message||'Invalid credentials.';err.style.display='block';}
+// ========== AUTH ==========
+async function register() {
+  const name = document.getElementById('r_name').value.trim();
+  const email = document.getElementById('r_email').value.trim();
+  const pass = document.getElementById('r_pass').value;
+  const type = document.getElementById('r_type').value;
+  const err = document.getElementById('regErr');
+  err.style.display = 'none';
+  if (!name || !email || !pass) { err.textContent = 'All fields required.'; err.style.display = 'block'; return; }
+  if (pass.length < 6) { err.textContent = 'Password min 6 characters.'; err.style.display = 'block'; return; }
+  try {
+    const res = await fetch(`${API}/register`, { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, email, password: pass, type }) });
+    const data = await res.json();
+    if (res.ok) {
+      otpPendingEmail = email;
+      otpPendingAction = 'register';
+      document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
+      clearOTPInputs();
+      switchTab('otp');
+    } else { err.textContent = data.message || 'Registration failed.'; err.style.display = 'block'; }
+  } catch(e) { err.textContent = 'Server error. Try again.'; err.style.display = 'block'; }
 }
 
-async function verifyOTP(){
-  const otp=getOTP();const err=document.getElementById('otpErr');const succ=document.getElementById('otpSucc');
-  err.style.display='none';succ.style.display='none';
-  if(otp.length<6){err.textContent='Enter all 6 digits.';err.style.display='block';return;}
-  const r=await req('/verify',{method:'POST',body:JSON.stringify({email:otpEmail,otp})});
-  if(r.ok){succ.textContent='✓ Verified!';succ.style.display='block';jwt=r.data.token;localStorage.setItem('sa_token',jwt);localStorage.setItem('sa_user',JSON.stringify(r.data.user));setTimeout(()=>{closeModal();setUser(r.data.user);},700);}
-  else{err.textContent=r.data.message||'Wrong OTP.';err.style.display='block';clearOTP();}
+async function login() {
+  const email = document.getElementById('l_email').value.trim();
+  const pass = document.getElementById('l_pass').value;
+  const err = document.getElementById('loginErr');
+  err.style.display = 'none';
+  try {
+    const res = await fetch(`${API}/login`, { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password: pass }) });
+    const data = await res.json();
+    if (res.ok) {
+      otpPendingEmail = email;
+      otpPendingAction = 'login';
+      document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
+      clearOTPInputs();
+      switchTab('otp');
+    } else { err.textContent = data.message || 'Invalid credentials.'; err.style.display = 'block'; }
+  } catch(e) { err.textContent = 'Server error. Try again.'; err.style.display = 'block'; }
 }
 
-async function resendOTP(){const r=await req('/resend-otp',{method:'POST',body:JSON.stringify({email:otpEmail})});toast(r.ok?'OTP resent!':r.data.message||'Failed',r.ok?'ok':'err');}
-
-function logout(){user=null;jwt='';localStorage.removeItem('sa_token');localStorage.removeItem('sa_user');document.getElementById('dashboard').style.display='none';document.getElementById('homePage').style.display='flex';document.getElementById('authBtns').style.display='flex';document.getElementById('logoutBtn').style.display='none';document.getElementById('userInfo').style.display='none';if(codeTimer)clearInterval(codeTimer);toast('Logged out');}
-
-function setUser(u){
-  user=u;
-  document.getElementById('homePage').style.display='none';document.getElementById('dashboard').style.display='block';
-  document.getElementById('authBtns').style.display='none';document.getElementById('logoutBtn').style.display='block';
-  document.getElementById('userInfo').style.display='flex';document.getElementById('navName').textContent=u.name;
-  document.getElementById('dashTitle').innerHTML=`Dashboard <span>— ${u.name}</span>`;document.getElementById('dashSub').textContent=u.email;
-  const rb=document.getElementById('roleBadge');rb.textContent=u.type.charAt(0).toUpperCase()+u.type.slice(1);rb.className='role-badge '+u.type;
-  ['studentDash','teacherDash','adminDash'].forEach(d=>document.getElementById(d).classList.remove('active'));
-  if(u.type==='student'){document.getElementById('studentDash').classList.add('active');loadStudent();}
-  else if(u.type==='teacher'){document.getElementById('teacherDash').classList.add('active');loadTeacher();}
-  else if(u.type==='admin'){document.getElementById('adminDash').classList.add('active');loadAdmin();}
+async function verifyOTP() {
+  const otp = getOTPValue();
+  const err = document.getElementById('otpErr');
+  const succ = document.getElementById('otpSucc');
+  err.style.display = 'none'; succ.style.display = 'none';
+  if (otp.length < 6) { err.textContent = 'Enter all 6 digits.'; err.style.display = 'block'; return; }
+  try {
+    const res = await fetch(`${API}/verify`, { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: otpPendingEmail, otp }) });
+    const data = await res.json();
+    if (res.ok) {
+      succ.textContent = 'Verified! Logging you in...'; succ.style.display = 'block';
+      setTimeout(() => { closeModal(); setUser(data.user); }, 800);
+    } else { err.textContent = data.message || 'Wrong OTP.'; err.style.display = 'block'; }
+  } catch(e) { err.textContent = 'Server error.'; err.style.display = 'block'; }
 }
 
-function dTab(sec,par,btn){
-  const p=document.getElementById(par);
-  p.querySelectorAll('.dsec').forEach(s=>s.classList.remove('active'));
-  p.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(sec).classList.add('active');btn.classList.add('active');
+async function resendOTP() {
+  try {
+    await fetch(`${API}/resend-otp`, { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: otpPendingEmail }) });
+    toast('OTP resent to ' + otpPendingEmail);
+  } catch(e) { toast('Failed to resend OTP', 'error'); }
 }
 
-async function loadStudent(){
-  const r=await req('/student/dashboard');if(!r.ok){toast('Failed to load','err');return;}
-  const d=r.data;const avg=d.subjects?.length?Math.round(d.subjects.reduce((a,s)=>a+s.percentage,0)/d.subjects.length):0;
-  document.getElementById('sStats').innerHTML=`
-    <div class="stat-card"><div class="stat-val blue">${d.subjects?.length||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat-card"><div class="stat-val ${avg>=75?'green':avg>=60?'yellow':''}">${avg}%</div><div class="stat-label">Avg Attendance</div></div>
-    <div class="stat-card"><div class="stat-val green">${d.total_present||0}</div><div class="stat-label">Present</div></div>
-    <div class="stat-card"><div class="stat-val">${d.total_classes||0}</div><div class="stat-label">Total Classes</div></div>`;
-  if(d.subjects?.length){
-    document.getElementById('sAttTbl').innerHTML=d.subjects.map(s=>{const p=s.percentage;return`<tr><td><span class="stag">${s.name}</span></td><td>${s.present}</td><td>${s.total}</td><td><div style="font-family:var(--fm);font-weight:700">${p}%</div><div class="att-bar-wrap"><div class="att-bar" style="width:${Math.min(p,100)}%;background:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}"></div></div></td><td><span class="badge ${p>=75?'bg':p>=60?'by':'br'}">${p>=75?'Good':p>=60?'Low':'Critical'}</span></td></tr>`;}).join('');
-    document.getElementById('markSubject').innerHTML=d.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-    document.getElementById('sSubjList').innerHTML=`<table><thead><tr><th>Subject</th><th>Teacher</th><th>%</th></tr></thead><tbody>${d.subjects.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.teacher||'—'}</td><td style="font-family:var(--fm);font-weight:700;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')}</tbody></table>`;
-  }else{document.getElementById('sAttTbl').innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">📭</div>No subjects yet</div></td></tr>';}
+function logout() {
+  currentUser = null;
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('homePage').style.display = 'flex';
+  document.getElementById('authBtns').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('userInfo').style.display = 'none';
+  if (codeTimer) clearInterval(codeTimer);
+  toast('Logged out successfully');
 }
 
-async function markAttendance(){
-  const sid=document.getElementById('markSubject').value,code=document.getElementById('markCode').value.trim().toUpperCase();
-  const err=document.getElementById('markErr'),succ=document.getElementById('markSucc');err.style.display='none';succ.style.display='none';
-  if(!code||code.length!==6){err.textContent='Enter valid 6-digit code.';err.style.display='block';return;}
-  const btn=event.target;btn.disabled=true;btn.textContent='Marking...';
-  const r=await req('/student/mark-attendance',{method:'POST',body:JSON.stringify({subject_id:sid,code})});
-  btn.disabled=false;btn.textContent='✓ Mark Present';
-  if(r.ok){succ.textContent='✓ Attendance marked!';succ.style.display='block';document.getElementById('markCode').value='';loadStudent();}
-  else{err.textContent=r.data.message||'Invalid or expired code.';err.style.display='block';}
+// ========== SET USER & LOAD DASHBOARD ==========
+function setUser(user) {
+  currentUser = user;
+  document.getElementById('homePage').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('authBtns').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'block';
+  document.getElementById('userInfo').style.display = 'flex';
+  document.getElementById('navName').textContent = user.name;
+  document.getElementById('dashTitle').innerHTML = `Dashboard <span>— ${user.name}</span>`;
+  document.getElementById('dashSubtitle').textContent = user.email;
+  const rb = document.getElementById('roleBadge');
+  rb.textContent = user.type.charAt(0).toUpperCase() + user.type.slice(1);
+  rb.className = 'role-badge ' + user.type;
+  ['studentDash','teacherDash','adminDash'].forEach(d => document.getElementById(d).classList.remove('active'));
+  if (user.type === 'student') { document.getElementById('studentDash').classList.add('active'); loadStudentDashboard(); }
+  else if (user.type === 'teacher') { document.getElementById('teacherDash').classList.add('active'); loadTeacherDashboard(); }
+  else if (user.type === 'admin') { document.getElementById('adminDash').classList.add('active'); loadAdminDashboard(); }
 }
 
-async function loadTeacher(){
-  const r=await req('/teacher/dashboard');if(!r.ok)return;const d=r.data;
-  document.getElementById('tStats').innerHTML=`
-    <div class="stat-card"><div class="stat-val blue">${d.total_subjects||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat-card"><div class="stat-val green">${d.total_students||0}</div><div class="stat-label">Students</div></div>
-    <div class="stat-card"><div class="stat-val">${d.total_sessions||0}</div><div class="stat-label">Sessions</div></div>
-    <div class="stat-card"><div class="stat-val yellow">${d.today_sessions||0}</div><div class="stat-label">Today</div></div>`;
-  document.getElementById('tSessTbl').innerHTML=d.recent_sessions?.length?d.recent_sessions.map(s=>`<tr><td><span class="stag">${s.subject}</span></td><td style="color:var(--muted)">${s.date}</td><td>${s.count}</td><td style="font-family:var(--fm)">${s.code}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions</div></td></tr>';
-  const subjs=d.subjects||[];
-  ['codeSubject','filterSubject'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Select Subject</option>'+subjs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');});
-  document.getElementById('tSubjList').innerHTML=subjs.length?`<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>${subjs.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.student_count||0}</td><td>${s.session_count||0}</td><td><button class="btn btn-outline btn-sm" onclick="delSubj(${s.id})">Remove</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="ei">📚</div>No subjects yet</div>';
+// ========== DASH TABS ==========
+function showDashTab(sectionId, parentId) {
+  const parent = document.getElementById(parentId);
+  parent.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
+  parent.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(sectionId).classList.add('active');
+  event.target.classList.add('active');
 }
 
-async function generateCode(){
-  const sid=document.getElementById('codeSubject').value;if(!sid){toast('Select a subject','err');return;}
-  const r=await req('/teacher/generate-code',{method:'POST',body:JSON.stringify({subject_id:sid})});
-  if(r.ok){document.getElementById('liveCode').textContent=r.data.code;document.getElementById('codeDisplay').style.display='block';startTimer(120);toast('✓ Code generated!');}
-  else toast(r.data.message||'Failed','err');
+// ========== STUDENT ==========
+async function loadStudentDashboard() {
+  try {
+    const res = await fetch(`${API}/student/dashboard`, { headers: {'X-User-Email': currentUser.email} });
+    const data = await res.json();
+    // Stats
+    const total = data.subjects ? data.subjects.length : 0;
+    const avgPct = data.subjects && data.subjects.length ? Math.round(data.subjects.reduce((a,s) => a + s.percentage, 0) / data.subjects.length) : 0;
+    document.getElementById('studentStats').innerHTML = `
+      <div class="stat-card"><div class="stat-val blue">${total}</div><div class="stat-label">Subjects</div></div>
+      <div class="stat-card"><div class="stat-val ${avgPct >= 75 ? 'green' : avgPct >= 60 ? 'yellow' : ''}">${avgPct}%</div><div class="stat-label">Avg Attendance</div></div>
+      <div class="stat-card"><div class="stat-val green">${data.total_present || 0}</div><div class="stat-label">Total Present</div></div>
+      <div class="stat-card"><div class="stat-val">${data.total_classes || 0}</div><div class="stat-label">Total Classes</div></div>
+    `;
+    // Table
+    if (data.subjects && data.subjects.length) {
+      document.getElementById('studentAttTable').innerHTML = data.subjects.map(s => {
+        const pct = s.percentage;
+        const barClass = pct >= 75 ? '' : pct >= 60 ? 'warn' : 'danger';
+        const badge = pct >= 75 ? 'badge-green' : pct >= 60 ? 'badge-yellow' : 'badge-red';
+        return `<tr>
+          <td><span class="subj-tag">${s.name}</span></td>
+          <td>${s.present}</td><td>${s.total}</td>
+          <td>
+            <div style="font-weight:700;font-family:var(--font-mono)">${pct}%</div>
+            <div class="att-bar-wrap"><div class="att-bar ${barClass}" style="width:${pct}%"></div></div>
+          </td>
+          <td><span class="badge ${badge}">${pct >= 75 ? 'Good' : pct >= 60 ? 'Low' : 'Critical'}</span></td>
+        </tr>`;
+      }).join('');
+    }
+    // Subject dropdown for mark attendance
+    const subjectSel = document.getElementById('markSubject');
+    subjectSel.innerHTML = data.subjects ? data.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('') : '';
+    // Subject list
+    document.getElementById('studentSubjectList').innerHTML = data.subjects && data.subjects.length ?
+      `<table><thead><tr><th>Subject</th><th>Teacher</th><th>Attendance %</th></tr></thead><tbody>
+        ${data.subjects.map(s => `<tr><td><span class="subj-tag">${s.name}</span></td><td>${s.teacher || '—'}</td><td style="font-family:var(--font-mono);font-weight:700;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')}
+      </tbody></table>` : '<div class="empty"><div class="e-icon">📚</div>No subjects enrolled yet</div>';
+  } catch(e) { toast('Failed to load dashboard', 'error'); }
 }
 
-function startTimer(sec){
-  if(codeTimer)clearInterval(codeTimer);let left=sec;
-  codeTimer=setInterval(()=>{left--;document.getElementById('timerCount').textContent=left;document.getElementById('timerBar').style.width=(left/sec*100)+'%';
-    if(left<=30)document.getElementById('timerBar').style.background='var(--red)';else if(left<=60)document.getElementById('timerBar').style.background='var(--yellow)';
-    if(left<=0){clearInterval(codeTimer);document.getElementById('codeDisplay').style.display='none';toast('Code expired','err');}
-  },1000);
+async function markAttendance() {
+  const subjectId = document.getElementById('markSubject').value;
+  const code = document.getElementById('markCode').value.trim();
+  const err = document.getElementById('markErr');
+  const succ = document.getElementById('markSucc');
+  err.style.display = 'none'; succ.style.display = 'none';
+  if (!code || code.length !== 6) { err.textContent = 'Enter a valid 6-digit code.'; err.style.display = 'block'; return; }
+  try {
+    const res = await fetch(`${API}/student/mark-attendance`, { method: 'POST',
+      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
+      body: JSON.stringify({ subject_id: subjectId, code }) });
+    const data = await res.json();
+    if (res.ok) { succ.textContent = '✓ Attendance marked successfully!'; succ.style.display = 'block'; document.getElementById('markCode').value = ''; loadStudentDashboard(); }
+    else { err.textContent = data.message || 'Invalid or expired code.'; err.style.display = 'block'; }
+  } catch(e) { err.textContent = 'Server error.'; err.style.display = 'block'; }
 }
 
-async function loadTAtt(){
-  const sid=document.getElementById('filterSubject').value;
-  const r=await req(sid?`/teacher/attendance?subject_id=${sid}`:'/teacher/attendance');if(!r.ok)return;
-  document.getElementById('tAttTbl').innerHTML=r.data.records?.length?r.data.records.map(rec=>{const p=rec.total>0?Math.round(rec.present/rec.total*100):0;return`<tr><td><strong>${rec.student_name}</strong></td><td><span class="stag">${rec.subject}</span></td><td>${rec.present}</td><td>${rec.total}</td><td style="font-family:var(--fm);font-weight:700;color:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}">${p}%</td></tr>`;}).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">📊</div>No records</div></td></tr>';
+// ========== TEACHER ==========
+async function loadTeacherDashboard() {
+  try {
+    const res = await fetch(`${API}/teacher/dashboard`, { headers: {'X-User-Email': currentUser.email} });
+    const data = await res.json();
+    document.getElementById('teacherStats').innerHTML = `
+      <div class="stat-card"><div class="stat-val blue">${data.total_subjects || 0}</div><div class="stat-label">Subjects</div></div>
+      <div class="stat-card"><div class="stat-val green">${data.total_students || 0}</div><div class="stat-label">Students</div></div>
+      <div class="stat-card"><div class="stat-val">${data.total_sessions || 0}</div><div class="stat-label">Sessions</div></div>
+      <div class="stat-card"><div class="stat-val yellow">${data.today_sessions || 0}</div><div class="stat-label">Today</div></div>
+    `;
+    if (data.recent_sessions && data.recent_sessions.length) {
+      document.getElementById('teacherSessionsTable').innerHTML = data.recent_sessions.map(s =>
+        `<tr><td><span class="subj-tag">${s.subject}</span></td><td>${s.date}</td><td>${s.count}</td><td style="font-family:var(--font-mono)">${s.code}</td></tr>`
+      ).join('');
+    }
+    // Populate subject dropdowns
+    const subjects = data.subjects || [];
+    ['codeSubject','filterSubject'].forEach(id => {
+      document.getElementById(id).innerHTML = `<option value="">All Subjects</option>` + subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    });
+    loadTeacherSubjects(subjects);
+  } catch(e) { toast('Failed to load dashboard', 'error'); }
 }
 
-async function addSubject(){
-  const name=document.getElementById('newSubj').value.trim();if(!name){toast('Enter subject name','err');return;}
-  const r=await req('/teacher/subjects',{method:'POST',body:JSON.stringify({name})});
-  if(r.ok){toast('Subject added!');document.getElementById('newSubj').value='';loadTeacher();}else toast(r.data.message||'Failed','err');
+function loadTeacherSubjects(subjects) {
+  const el = document.getElementById('teacherSubjectList');
+  if (!subjects || !subjects.length) { el.innerHTML = '<div class="empty"><div class="e-icon">📚</div>No subjects yet. Add one above!</div>'; return; }
+  el.innerHTML = `<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>
+    ${subjects.map(s => `<tr>
+      <td><span class="subj-tag">${s.name}</span></td>
+      <td>${s.student_count || 0}</td>
+      <td>${s.session_count || 0}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="deleteSubject(${s.id})">Remove</button></td>
+    </tr>`).join('')}
+  </tbody></table>`;
 }
-async function delSubj(id){if(!confirm('Remove subject?'))return;const r=await req(`/teacher/subjects/${id}`,{method:'DELETE'});if(r.ok){toast('Removed');loadTeacher();}}
 
-async function loadAdmin(){
-  const r=await req('/admin/dashboard');if(!r.ok)return;const d=r.data;
-  document.getElementById('aStats').innerHTML=`
-    <div class="stat-card"><div class="stat-val blue">${d.total_students}</div><div class="stat-label">Students</div></div>
-    <div class="stat-card"><div class="stat-val green">${d.total_teachers}</div><div class="stat-label">Teachers</div></div>
-    <div class="stat-card"><div class="stat-val yellow">${d.total_subjects}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat-card"><div class="stat-val">${d.total_records}</div><div class="stat-label">Records</div></div>`;
-  document.getElementById('aUsers').innerHTML=d.recent_users?.length?d.recent_users.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${u.name}</strong><div style="color:var(--muted);font-size:11px">${u.email}</div></div><span class="badge ${u.type==='student'?'bg':u.type==='teacher'?'by':'br'}">${u.type}</span></div>`).join(''):'<div class="empty"><div class="ei">👤</div>No users</div>';
-  document.getElementById('aSess').innerHTML=d.active_sessions?.length?d.active_sessions.map(s=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px"><div><strong>${s.subject}</strong><div style="color:var(--muted);font-size:11px">${s.teacher}</div></div><span class="badge bg">Active</span></div>`).join(''):'<div class="empty"><div class="ei">🟢</div>No active sessions</div>';
-  document.getElementById('aStudTbl').innerHTML=d.students?.length?d.students.map(s=>`<tr><td><strong>${s.name}</strong></td><td style="color:var(--muted);font-size:12px">${s.email}</td><td>${s.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDel(${s.id})">Remove</button></td></tr>`).join(''):'<tr><td colspan="4"><div class="empty"><div class="ei">👥</div>No students</div></td></tr>';
-  document.getElementById('aTeachTbl').innerHTML=d.teachers?.length?d.teachers.map(t=>`<tr><td><strong>${t.name}</strong></td><td style="color:var(--muted);font-size:12px">${t.email}</td><td>${t.subjects||'—'}</td><td>${t.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDel(${t.id})">Remove</button></td></tr>`).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">👨‍🏫</div>No teachers</div></td></tr>';
-  document.getElementById('aAttTbl').innerHTML=d.attendance?.length?d.attendance.map(a=>`<tr><td>${a.student_name}</td><td><span class="stag">${a.subject}</span></td><td>${a.teacher}</td><td style="font-size:12px;color:var(--muted)">${a.date}</td><td><span class="badge bg">Present</span></td></tr>`).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No records</div></td></tr>';
+async function addSubject() {
+  const name = document.getElementById('newSubjectName').value.trim();
+  if (!name) { toast('Enter a subject name', 'error'); return; }
+  try {
+    const res = await fetch(`${API}/teacher/subjects`, { method: 'POST',
+      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
+      body: JSON.stringify({ name }) });
+    const data = await res.json();
+    if (res.ok) { toast('Subject added!'); document.getElementById('newSubjectName').value = ''; loadTeacherDashboard(); }
+    else toast(data.message || 'Failed', 'error');
+  } catch(e) { toast('Server error', 'error'); }
 }
-async function adminDel(id){if(!confirm('Remove user?'))return;const r=await req(`/admin/users/${id}`,{method:'DELETE'});if(r.ok){toast('Removed');loadAdmin();}else toast('Failed','err');}
 
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-const su=localStorage.getItem('sa_user');if(su&&jwt)setUser(JSON.parse(su));
+async function deleteSubject(id) {
+  if (!confirm('Remove this subject?')) return;
+  try {
+    const res = await fetch(`${API}/teacher/subjects/${id}`, { method: 'DELETE', headers: {'X-User-Email': currentUser.email} });
+    if (res.ok) { toast('Subject removed'); loadTeacherDashboard(); }
+  } catch(e) { toast('Server error', 'error'); }
+}
+
+async function generateCode() {
+  const subjectId = document.getElementById('codeSubject').value;
+  if (!subjectId) { toast('Select a subject first', 'error'); return; }
+  try {
+    const res = await fetch(`${API}/teacher/generate-code`, { method: 'POST',
+      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
+      body: JSON.stringify({ subject_id: subjectId }) });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('liveCode').textContent = data.code;
+      document.getElementById('codeDisplay').style.display = 'block';
+      startCodeTimer(120);
+    } else toast(data.message || 'Failed', 'error');
+  } catch(e) { toast('Server error', 'error'); }
+}
+
+function startCodeTimer(seconds) {
+  if (codeTimer) clearInterval(codeTimer);
+  let remaining = seconds;
+  const bar = document.getElementById('timerBar');
+  const count = document.getElementById('timerCount');
+  codeTimer = setInterval(() => {
+    remaining--;
+    count.textContent = remaining;
+    bar.style.width = (remaining / seconds * 100) + '%';
+    if (remaining <= 30) bar.style.background = 'var(--red)';
+    else if (remaining <= 60) bar.style.background = 'var(--yellow)';
+    if (remaining <= 0) {
+      clearInterval(codeTimer);
+      document.getElementById('liveCode').textContent = '------';
+      document.getElementById('codeDisplay').style.display = 'none';
+      toast('Code expired. Generate a new one.', 'error');
+    }
+  }, 1000);
+}
+
+async function loadTeacherAttendance() {
+  const subjectId = document.getElementById('filterSubject').value;
+  try {
+    const url = subjectId ? `${API}/teacher/attendance?subject_id=${subjectId}` : `${API}/teacher/attendance`;
+    const res = await fetch(url, { headers: {'X-User-Email': currentUser.email} });
+    const data = await res.json();
+    if (data.records && data.records.length) {
+      document.getElementById('teacherAttTable').innerHTML = data.records.map(r => {
+        const pct = r.total > 0 ? Math.round(r.present / r.total * 100) : 0;
+        return `<tr>
+          <td>${r.student_name}</td>
+          <td><span class="subj-tag">${r.subject}</span></td>
+          <td>${r.present}</td><td>${r.total}</td>
+          <td style="font-family:var(--font-mono);font-weight:700;color:${pct>=75?'var(--green)':pct>=60?'var(--yellow)':'var(--red)'}">${pct}%</td>
+        </tr>`;
+      }).join('');
+    } else {
+      document.getElementById('teacherAttTable').innerHTML = '<tr><td colspan="5"><div class="empty"><div class="e-icon">📊</div>No records found</div></td></tr>';
+    }
+  } catch(e) { toast('Failed to load attendance', 'error'); }
+}
+
+// ========== ADMIN ==========
+async function loadAdminDashboard() {
+  try {
+    const res = await fetch(`${API}/admin/dashboard`, { headers: {'X-User-Email': currentUser.email} });
+    const data = await res.json();
+    document.getElementById('adminStats').innerHTML = `
+      <div class="stat-card"><div class="stat-val blue">${data.total_students || 0}</div><div class="stat-label">Students</div></div>
+      <div class="stat-card"><div class="stat-val green">${data.total_teachers || 0}</div><div class="stat-label">Teachers</div></div>
+      <div class="stat-card"><div class="stat-val yellow">${data.total_subjects || 0}</div><div class="stat-label">Subjects</div></div>
+      <div class="stat-card"><div class="stat-val">${data.total_records || 0}</div><div class="stat-label">Attendance Records</div></div>
+    `;
+    // Recent users
+    document.getElementById('adminRecentUsers').innerHTML = data.recent_users && data.recent_users.length ?
+      data.recent_users.map(u => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div><strong>${u.name}</strong><div style="color:var(--muted);font-size:11px">${u.email}</div></div>
+        <span class="badge ${u.type==='student'?'badge-green':u.type==='teacher'?'badge-yellow':'badge-red'}">${u.type}</span>
+      </div>`).join('') : '<div class="empty"><div class="e-icon">👤</div>No users yet</div>';
+
+    // Active sessions
+    document.getElementById('adminActiveSessions').innerHTML = data.active_sessions && data.active_sessions.length ?
+      data.active_sessions.map(s => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <div><strong>${s.subject}</strong><div style="color:var(--muted);font-size:11px">${s.teacher}</div></div>
+        <span class="badge badge-green">Active</span>
+      </div>`).join('') : '<div class="empty"><div class="e-icon">🟢</div>No active sessions</div>';
+
+    // Load tables
+    loadAdminStudents(data.students);
+    loadAdminTeachers(data.teachers);
+    loadAdminAttendance(data.attendance);
+  } catch(e) { toast('Failed to load admin dashboard', 'error'); }
+}
+
+function loadAdminStudents(students) {
+  document.getElementById('adminStudentTable').innerHTML = students && students.length ?
+    students.map(s => `<tr>
+      <td><strong>${s.name}</strong></td>
+      <td style="color:var(--muted);font-size:12px">${s.email}</td>
+      <td>${s.joined}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${s.id})">Remove</button></td>
+    </tr>`).join('') : '<tr><td colspan="4"><div class="empty"><div class="e-icon">👥</div>No students found</div></td></tr>';
+}
+
+function loadAdminTeachers(teachers) {
+  document.getElementById('adminTeacherTable').innerHTML = teachers && teachers.length ?
+    teachers.map(t => `<tr>
+      <td><strong>${t.name}</strong></td>
+      <td style="color:var(--muted);font-size:12px">${t.email}</td>
+      <td>${t.subjects || '—'}</td>
+      <td>${t.joined}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${t.id})">Remove</button></td>
+    </tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="e-icon">👨‍🏫</div>No teachers found</div></td></tr>';
+}
+
+function loadAdminAttendance(records) {
+  document.getElementById('adminAttTable').innerHTML = records && records.length ?
+    records.map(r => `<tr>
+      <td>${r.student_name}</td>
+      <td><span class="subj-tag">${r.subject}</span></td>
+      <td>${r.teacher}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.date}</td>
+      <td><span class="badge badge-green">Present</span></td>
+    </tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="e-icon">📋</div>No records found</div></td></tr>';
+}
+
+async function adminDeleteUser(id) {
+  if (!confirm('Remove this user? This cannot be undone.')) return;
+  try {
+    const res = await fetch(`${API}/admin/users/${id}`, { method: 'DELETE', headers: {'X-User-Email': currentUser.email} });
+    if (res.ok) { toast('User removed'); loadAdminDashboard(); }
+    else toast('Failed to remove user', 'error');
+  } catch(e) { toast('Server error', 'error'); }
+}
+
+// ========== PWA ==========
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+}
 </script>
 </body>
 </html>

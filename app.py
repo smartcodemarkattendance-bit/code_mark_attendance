@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_limiter import Limiter
@@ -10,18 +10,22 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
+from math import radians, sin, cos, sqrt, atan2   # FIX 1: moved import to top level
 import threading
-import io
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
-app.config['JWT_SECRET_KEY'] = 'smartattend-super-secret-jwt-key-2024'
+# FIX 2: read secrets from environment variables (required for production deploy)
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'smartattend-super-secret-jwt-key-2024')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
-EMAIL_SENDER   = "smart.codemark.attendance@gmail.com"
-EMAIL_PASSWORD = "bfsq fiaj felf pcwy"
-DB_PATH        = "smartattend.db"
+
+EMAIL_SENDER   = os.environ.get('EMAIL_SENDER', 'smart.codemark.attendance@gmail.com')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD', 'bfsq fiaj felf pcwy')
+
+# FIX 3: use /tmp for the DB so it works on read-only file systems (Render free tier)
+DB_PATH = os.environ.get('DB_PATH', '/tmp/smartattend.db')
 
 jwt     = JWTManager(app)
 sock    = Sock(app)
@@ -41,15 +45,15 @@ def init_db():
     c = conn.cursor()
     c.executescript("""
         CREATE TABLE IF NOT EXISTS users (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            name       TEXT NOT NULL,
-            email      TEXT UNIQUE NOT NULL,
-            password   TEXT NOT NULL,
-            type       TEXT NOT NULL CHECK(type IN ('student','teacher','admin')),
-            verified   INTEGER DEFAULT 0,
-            joined     TEXT DEFAULT (date('now')),
-            face_data  TEXT DEFAULT NULL,
-            theme      TEXT DEFAULT 'dark'
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            name     TEXT NOT NULL,
+            email    TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            type     TEXT NOT NULL CHECK(type IN ('student','teacher','admin')),
+            verified INTEGER DEFAULT 0,
+            joined   TEXT DEFAULT (date('now')),
+            face_data TEXT DEFAULT NULL,
+            theme    TEXT DEFAULT 'dark'
         );
         CREATE TABLE IF NOT EXISTS otps (
             id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,7 +141,7 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
 def store_otp(email, otp):
-    conn = get_db()
+    conn    = get_db()
     expires = (datetime.now() + timedelta(minutes=10)).isoformat()
     conn.execute("DELETE FROM otps WHERE email=?", (email,))
     conn.execute("INSERT INTO otps(email,otp,expires,attempts) VALUES(?,?,?,0)", (email, otp, expires))
@@ -146,7 +150,7 @@ def store_otp(email, otp):
 
 def verify_otp_db(email, otp):
     conn = get_db()
-    row = conn.execute(
+    row  = conn.execute(
         "SELECT * FROM otps WHERE email=? AND expires>?",
         (email, datetime.now().isoformat())
     ).fetchone()
@@ -171,13 +175,13 @@ def verify_otp_db(email, otp):
 
 def get_user_by_email(email):
     conn = get_db()
-    u = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    u    = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
     conn.close()
     return dict(u) if u else None
 
 def get_user_by_id(uid):
     conn = get_db()
-    u = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    u    = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     conn.close()
     return dict(u) if u else None
 
@@ -211,18 +215,18 @@ def otp_email_body(otp, name):
       <p style="color:#888899;margin-bottom:24px">Your one-time password for SmartAttend:</p>
       <div style="text-align:center;background:#16161f;border:1px solid #2a2a3a;border-radius:12px;padding:28px;margin:20px 0">
         <div style="font-size:44px;font-weight:700;letter-spacing:14px;color:#e04c2f;font-family:monospace">{otp}</div>
-        <div style="color:#888899;font-size:12px;margin-top:10px">Valid for 10 minutes · Do not share</div>
+        <div style="color:#888899;font-size:12px;margin-top:10px">Valid for 10 minutes &middot; Do not share</div>
       </div>
       <p style="color:#888899;font-size:12px;margin-top:20px">If you didn't request this, you can safely ignore this email.</p>
       <hr style="border:none;border-top:1px solid #2a2a3a;margin:20px 0">
-      <p style="color:#555;font-size:11px">SmartAttend · Secure Attendance System</p>
+      <p style="color:#555;font-size:11px">SmartAttend &middot; Secure Attendance System</p>
     </div>
     """
 
 def low_attendance_email(student_name, student_email, subject_name, percentage):
     body = f"""
     <div style="font-family:Arial;max-width:500px;margin:auto;background:#0a0a0f;color:#f0f0f5;padding:36px;border-radius:16px;border:1px solid #e74c3c">
-      <h2 style="color:#e74c3c">⚠️ Low Attendance Alert</h2>
+      <h2 style="color:#e74c3c">&#9888;&#65039; Low Attendance Alert</h2>
       <p>Hi <strong>{student_name}</strong>,</p>
       <p>Your attendance in <strong>{subject_name}</strong> has dropped to:</p>
       <div style="text-align:center;background:#16161f;border:2px solid #e74c3c;border-radius:12px;padding:24px;margin:20px 0">
@@ -231,10 +235,10 @@ def low_attendance_email(student_name, student_email, subject_name, percentage):
       </div>
       <p style="color:#f1c40f">Please attend upcoming classes to improve your attendance.</p>
       <hr style="border:none;border-top:1px solid #2a2a3a;margin:20px 0">
-      <p style="color:#555;font-size:11px">SmartAttend · Automated Alert</p>
+      <p style="color:#555;font-size:11px">SmartAttend &middot; Automated Alert</p>
     </div>
     """
-    send_email(student_email, f"⚠️ Low Attendance Alert — {subject_name}", body)
+    send_email(student_email, f"Low Attendance Alert - {subject_name}", body)
 
 # ─── SERVE STATIC ─────────────────────────────────────────────────────────────
 @app.route('/')
@@ -353,13 +357,12 @@ def face_register():
 @app.route('/face/login', methods=['POST'])
 @limiter.limit("10 per hour")
 def face_login():
-    data       = request.json
-    email      = data.get('email','').strip().lower()
-    face_data  = data.get('face_data')
-    user       = get_user_by_email(email)
+    data      = request.json
+    email     = data.get('email','').strip().lower()
+    face_data = data.get('face_data')
+    user      = get_user_by_email(email)
     if not user or not user['face_data']:
         return jsonify({'message':'Face login not set up for this account'}), 400
-    # In production, compare face embeddings. Here we do a basic check.
     if face_data and user['face_data']:
         token = create_access_token(identity=str(user['id']))
         log_activity(user['id'], user['name'], 'FACE_LOGIN', None, request.remote_addr)
@@ -402,23 +405,18 @@ def student_dashboard():
         LEFT JOIN attendance a ON a.subject_id=s.id AND a.student_id=?
         GROUP BY s.id
     """, (uid, uid)).fetchall()
-
-    # Weekly trend (last 7 days)
     weekly = conn.execute("""
         SELECT date, COUNT(*) as count FROM attendance
         WHERE student_id=? AND date >= date('now','-7 days')
         GROUP BY date ORDER BY date
     """, (uid,)).fetchall()
-
-    # Monthly trend (last 6 months)
     monthly = conn.execute("""
         SELECT strftime('%Y-%m', date) as month, COUNT(*) as count
         FROM attendance WHERE student_id=?
         GROUP BY month ORDER BY month DESC LIMIT 6
     """, (uid,)).fetchall()
-
     total_present = sum(r['present'] for r in rows)
-    total_classes = sum(r['total'] for r in rows)
+    total_classes = sum(r['total']   for r in rows)
     subjects_out  = []
     for r in rows:
         pct = round(r['present'] / r['total'] * 100) if r['total'] > 0 else 0
@@ -428,10 +426,10 @@ def student_dashboard():
         })
     conn.close()
     return jsonify({
-        'subjects': subjects_out,
+        'subjects':      subjects_out,
         'total_present': total_present,
         'total_classes': total_classes,
-        'weekly_trend': [dict(w) for w in weekly],
+        'weekly_trend':  [dict(w) for w in weekly],
         'monthly_trend': [dict(m) for m in monthly]
     })
 
@@ -443,25 +441,21 @@ def mark_attendance():
     user = get_user_by_id(uid)
     if not user or user['type'] != 'student':
         return jsonify({'message':'Unauthorized'}), 403
-
-    data       = request.json
-    subject_id = data.get('subject_id')
-    code       = data.get('code','').strip().upper()
+    data        = request.json
+    subject_id  = data.get('subject_id')
+    code        = data.get('code','').strip().upper()
     student_lat = data.get('lat')
     student_lng = data.get('lng')
     ip          = request.remote_addr
-
-    conn = get_db()
-    code_row = conn.execute(
+    conn        = get_db()
+    code_row    = conn.execute(
         "SELECT * FROM attendance_codes WHERE code=? AND subject_id=? AND expires_at>?",
         (code, subject_id, datetime.now().isoformat())
     ).fetchone()
-
     if not code_row:
         conn.close()
         return jsonify({'message':'Invalid or expired code'}), 400
-
-    # Anti-proxy: check if same IP already used this code
+    # Anti-proxy: check if same IP already used this code today
     ip_check = conn.execute(
         "SELECT id FROM attendance WHERE subject_id=? AND ip_address=? AND date=?",
         (subject_id, ip, datetime.now().strftime('%Y-%m-%d'))
@@ -472,19 +466,17 @@ def mark_attendance():
         conn.commit()
         conn.close()
         return jsonify({'message':'Suspicious activity detected. Already marked from this device.'}), 409
-
-    # Geo-location check
+    # Geo-location check (FIX 1 already applied — import at top)
     if code_row['lat'] and code_row['lng'] and code_row['radius']:
         if not student_lat or not student_lng:
             conn.close()
             return jsonify({'message':'Location required for this class. Please enable GPS.'}), 400
-        from math import radians, sin, cos, sqrt, atan2
-        R = 6371000
-        lat1, lon1 = radians(float(code_row['lat'])), radians(float(code_row['lng']))
-        lat2, lon2 = radians(float(student_lat)), radians(float(student_lng))
+        R    = 6371000
+        lat1, lon1 = radians(float(code_row['lat'])),  radians(float(code_row['lng']))
+        lat2, lon2 = radians(float(student_lat)),       radians(float(student_lng))
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+        a    = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
         distance = R * 2 * atan2(sqrt(a), sqrt(1-a))
         if distance > float(code_row['radius']):
             conn.execute("INSERT INTO suspicious_flags(student_id,subject_id,reason) VALUES(?,?,?)",
@@ -492,7 +484,6 @@ def mark_attendance():
             conn.commit()
             conn.close()
             return jsonify({'message': f'You are {distance:.0f}m away. Must be within {code_row["radius"]}m.'}), 400
-
     today = datetime.now().strftime('%Y-%m-%d')
     try:
         conn.execute(
@@ -500,11 +491,10 @@ def mark_attendance():
             (uid, subject_id, today, ip, student_lat, student_lng)
         )
         conn.commit()
-
         # Check for low attendance and alert
         rows = conn.execute("""
             SELECT COUNT(DISTINCT ac.id) as total,
-                   COUNT(DISTINCT a.date) as present
+                   COUNT(DISTINCT a.date)  as present
             FROM subjects s
             LEFT JOIN attendance_codes ac ON ac.subject_id=s.id
             LEFT JOIN attendance a ON a.subject_id=s.id AND a.student_id=?
@@ -514,12 +504,12 @@ def mark_attendance():
             pct = round(rows['present'] / rows['total'] * 100)
             if pct < 75:
                 subj = conn.execute("SELECT name FROM subjects WHERE id=?", (subject_id,)).fetchone()
-                threading.Thread(target=low_attendance_email,
+                threading.Thread(
+                    target=low_attendance_email,
                     args=(user['name'], user['email'], subj['name'] if subj else 'Subject', pct),
-                    daemon=True).start()
+                    daemon=True
+                ).start()
         conn.close()
-
-        # Broadcast via WebSocket
         broadcast_ws({'type':'attendance_marked','student': user['name'],'subject_id': subject_id})
         log_activity(uid, user['name'], 'ATTENDANCE_MARKED', f'Subject {subject_id}', ip)
         return jsonify({'message':'Attendance marked successfully!'}), 200
@@ -535,23 +525,22 @@ def teacher_dashboard():
     user = get_user_by_id(uid)
     if not user or user['type'] != 'teacher':
         return jsonify({'message':'Unauthorized'}), 403
-    conn = get_db()
+    conn     = get_db()
     subjects = conn.execute("""
         SELECT s.id, s.name,
                COUNT(DISTINCT a.student_id) as student_count,
-               COUNT(DISTINCT ac.id) as session_count
+               COUNT(DISTINCT ac.id)        as session_count
         FROM subjects s
-        LEFT JOIN attendance a ON a.subject_id=s.id
+        LEFT JOIN attendance a  ON a.subject_id=s.id
         LEFT JOIN attendance_codes ac ON ac.subject_id=s.id
         WHERE s.teacher_id=? GROUP BY s.id
     """, (uid,)).fetchall()
-
     total_students = conn.execute(
         "SELECT COUNT(DISTINCT a.student_id) FROM attendance a JOIN subjects s ON s.id=a.subject_id WHERE s.teacher_id=?", (uid,)
     ).fetchone()[0]
-    total_sessions = conn.execute("SELECT COUNT(*) FROM attendance_codes WHERE teacher_id=?", (uid,)).fetchone()[0]
-    today = datetime.now().strftime('%Y-%m-%d')
-    today_sessions = conn.execute(
+    total_sessions  = conn.execute("SELECT COUNT(*) FROM attendance_codes WHERE teacher_id=?", (uid,)).fetchone()[0]
+    today           = datetime.now().strftime('%Y-%m-%d')
+    today_sessions  = conn.execute(
         "SELECT COUNT(*) FROM attendance_codes WHERE teacher_id=? AND date(created_at)=?", (uid, today)
     ).fetchone()[0]
     recent_sessions = conn.execute("""
@@ -562,7 +551,6 @@ def teacher_dashboard():
         LEFT JOIN attendance a ON a.subject_id=ac.subject_id AND date(a.date)=date(ac.created_at)
         WHERE ac.teacher_id=? GROUP BY ac.id ORDER BY ac.created_at DESC LIMIT 10
     """, (uid,)).fetchall()
-    # Weekly sessions trend
     weekly = conn.execute("""
         SELECT date(created_at) as date, COUNT(*) as count
         FROM attendance_codes WHERE teacher_id=? AND date(created_at)>=date('now','-7 days')
@@ -570,13 +558,13 @@ def teacher_dashboard():
     """, (uid,)).fetchall()
     conn.close()
     return jsonify({
-        'subjects': [dict(s) for s in subjects],
-        'total_subjects': len(subjects),
-        'total_students': total_students,
-        'total_sessions': total_sessions,
-        'today_sessions': today_sessions,
+        'subjects':        [dict(s) for s in subjects],
+        'total_subjects':  len(subjects),
+        'total_students':  total_students,
+        'total_sessions':  total_sessions,
+        'today_sessions':  today_sessions,
         'recent_sessions': [dict(r) for r in recent_sessions],
-        'weekly_trend': [dict(w) for w in weekly]
+        'weekly_trend':    [dict(w) for w in weekly]
     })
 
 @app.route('/teacher/subjects', methods=['POST'])
@@ -624,7 +612,7 @@ def generate_attendance_code():
     code       = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     now        = datetime.now()
     expires    = now + timedelta(minutes=2)
-    conn = get_db()
+    conn       = get_db()
     subj = conn.execute("SELECT * FROM subjects WHERE id=? AND teacher_id=?", (subject_id, uid)).fetchone()
     if not subj:
         conn.close()
@@ -647,7 +635,7 @@ def teacher_attendance():
     if not user or user['type'] != 'teacher':
         return jsonify({'message':'Unauthorized'}), 403
     subject_id = request.args.get('subject_id')
-    conn = get_db()
+    conn       = get_db()
     if subject_id:
         rows = conn.execute("""
             SELECT u.name as student_name, u.email, s.name as subject,
@@ -678,25 +666,29 @@ def teacher_export():
         return jsonify({'message':'Unauthorized'}), 403
     subject_id = request.args.get('subject_id')
     fmt        = request.args.get('format','csv')
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT u.name as student_name, u.email, s.name as subject, a.date
-        FROM attendance a JOIN users u ON u.id=a.student_id
-        JOIN subjects s ON s.id=a.subject_id
-        WHERE s.teacher_id=? {}
-        ORDER BY a.date DESC
-    """.format("AND s.id=?" if subject_id else ""),
-        (uid, subject_id) if subject_id else (uid,)
-    ).fetchall()
+    conn       = get_db()
+    # FIX 4: safe parameterized query instead of string .format()
+    if subject_id:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject, a.date
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? AND s.id=? ORDER BY a.date DESC
+        """, (uid, subject_id)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject, a.date
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? ORDER BY a.date DESC
+        """, (uid,)).fetchall()
     conn.close()
-
     if fmt == 'csv':
         output = "Student Name,Email,Subject,Date\n"
         for r in rows:
             output += f"{r['student_name']},{r['email']},{r['subject']},{r['date']}\n"
-        from flask import Response
         return Response(output, mimetype='text/csv',
-            headers={"Content-Disposition": "attachment;filename=attendance.csv"})
+                        headers={"Content-Disposition": "attachment;filename=attendance.csv"})
     return jsonify({'records': [dict(r) for r in rows]})
 
 @app.route('/teacher/export-email', methods=['POST'])
@@ -707,25 +699,29 @@ def teacher_export_email():
     if not user or user['type'] != 'teacher':
         return jsonify({'message':'Unauthorized'}), 403
     subject_id = request.json.get('subject_id')
-    conn = get_db()
-    rows = conn.execute("""
-        SELECT u.name as student_name, u.email, s.name as subject, a.date
-        FROM attendance a JOIN users u ON u.id=a.student_id
-        JOIN subjects s ON s.id=a.subject_id
-        WHERE s.teacher_id=? {}
-        ORDER BY a.date DESC
-    """.format("AND s.id=?" if subject_id else ""),
-        (uid, subject_id) if subject_id else (uid,)
-    ).fetchall()
+    conn       = get_db()
+    # FIX 4: same safe query here
+    if subject_id:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject, a.date
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? AND s.id=? ORDER BY a.date DESC
+        """, (uid, subject_id)).fetchall()
+    else:
+        rows = conn.execute("""
+            SELECT u.name as student_name, u.email, s.name as subject, a.date
+            FROM attendance a JOIN users u ON u.id=a.student_id
+            JOIN subjects s ON s.id=a.subject_id
+            WHERE s.teacher_id=? ORDER BY a.date DESC
+        """, (uid,)).fetchall()
     conn.close()
-
     csv_data = "Student Name,Email,Subject,Date\n"
     for r in rows:
         csv_data += f"{r['student_name']},{r['email']},{r['subject']},{r['date']}\n"
-
     body = f"""
     <div style="font-family:Arial;max-width:500px;margin:auto;background:#0a0a0f;color:#f0f0f5;padding:32px;border-radius:12px">
-      <h2 style="color:#e04c2f">SmartAttend — Attendance Export</h2>
+      <h2 style="color:#e04c2f">SmartAttend &mdash; Attendance Export</h2>
       <p>Hi <strong>{user['name']}</strong>,</p>
       <p>Please find the attendance report attached as a CSV file.</p>
       <p style="color:#888899;font-size:12px">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
@@ -743,14 +739,13 @@ def admin_dashboard():
     user = get_user_by_id(uid)
     if not user or user['type'] != 'admin':
         return jsonify({'message':'Unauthorized'}), 403
-    conn = get_db()
-    total_students = conn.execute("SELECT COUNT(*) FROM users WHERE type='student'").fetchone()[0]
-    total_teachers = conn.execute("SELECT COUNT(*) FROM users WHERE type='teacher'").fetchone()[0]
-    total_subjects = conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0]
-    total_records  = conn.execute("SELECT COUNT(*) FROM attendance").fetchone()[0]
-    total_flags    = conn.execute("SELECT COUNT(*) FROM suspicious_flags").fetchone()[0]
-
-    recent_users = conn.execute(
+    conn            = get_db()
+    total_students  = conn.execute("SELECT COUNT(*) FROM users WHERE type='student'").fetchone()[0]
+    total_teachers  = conn.execute("SELECT COUNT(*) FROM users WHERE type='teacher'").fetchone()[0]
+    total_subjects  = conn.execute("SELECT COUNT(*) FROM subjects").fetchone()[0]
+    total_records   = conn.execute("SELECT COUNT(*) FROM attendance").fetchone()[0]
+    total_flags     = conn.execute("SELECT COUNT(*) FROM suspicious_flags").fetchone()[0]
+    recent_users    = conn.execute(
         "SELECT id,name,email,type,joined FROM users ORDER BY id DESC LIMIT 8"
     ).fetchall()
     active_sessions = conn.execute("""
@@ -760,10 +755,10 @@ def admin_dashboard():
         JOIN users u ON u.id=ac.teacher_id
         WHERE ac.expires_at > ? ORDER BY ac.created_at DESC
     """, (datetime.now().isoformat(),)).fetchall()
-    students = conn.execute(
+    students   = conn.execute(
         "SELECT id,name,email,joined FROM users WHERE type='student' ORDER BY id DESC"
     ).fetchall()
-    teachers = conn.execute("""
+    teachers   = conn.execute("""
         SELECT u.id, u.name, u.email, u.joined,
                GROUP_CONCAT(s.name,', ') as subjects
         FROM users u LEFT JOIN subjects s ON s.teacher_id=u.id
@@ -787,24 +782,23 @@ def admin_dashboard():
     logs = conn.execute(
         "SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 100"
     ).fetchall()
-    # Monthly attendance trend
     monthly = conn.execute("""
         SELECT strftime('%Y-%m', date) as month, COUNT(*) as count
         FROM attendance GROUP BY month ORDER BY month DESC LIMIT 6
     """).fetchall()
     conn.close()
     return jsonify({
-        'total_students': total_students, 'total_teachers': total_teachers,
-        'total_subjects': total_subjects, 'total_records': total_records,
-        'total_flags': total_flags,
-        'recent_users': [dict(r) for r in recent_users],
+        'total_students':  total_students, 'total_teachers': total_teachers,
+        'total_subjects':  total_subjects, 'total_records':  total_records,
+        'total_flags':     total_flags,
+        'recent_users':    [dict(r) for r in recent_users],
         'active_sessions': [dict(r) for r in active_sessions],
-        'students': [dict(r) for r in students],
-        'teachers': [dict(r) for r in teachers],
-        'attendance': [dict(r) for r in attendance],
-        'flags': [dict(r) for r in flags],
-        'logs': [dict(r) for r in logs],
-        'monthly_trend': [dict(m) for m in monthly]
+        'students':        [dict(r) for r in students],
+        'teachers':        [dict(r) for r in teachers],
+        'attendance':      [dict(r) for r in attendance],
+        'flags':           [dict(r) for r in flags],
+        'logs':            [dict(r) for r in logs],
+        'monthly_trend':   [dict(m) for m in monthly]
     })
 
 @app.route('/admin/users/<int:user_id>', methods=['DELETE'])
@@ -852,4 +846,5 @@ def cleanup_expired():
 if __name__ == '__main__':
     init_db()
     threading.Thread(target=cleanup_expired, daemon=True).start()
-    app.run(host='0.0.0.0', port=10000, debug=False)
+    port = int(os.environ.get('PORT', 10000))   # FIX 5: respect PORT env var (Render sets this)
+    app.run(host='0.0.0.0', port=port, debug=False)

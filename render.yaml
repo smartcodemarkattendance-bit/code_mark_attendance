@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: smartattend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true          # Render auto-generates a secure random value
+      - key: EMAIL_SENDER
+        sync: false                  # You fill this in the Render dashboard
+      - key: EMAIL_PASSWORD
+        sync: false                  # You fill this in the Render dashboard
+      - key: DB_PATH
+        value: /tmp/smartattend.db

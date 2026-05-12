@@ -1,297 +1,261 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SmartAttend</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0a0a0f;
-      --bg2: #111118;
-      --card: #16161f;
-      --border: #2a2a3a;
-      --accent: #e04c2f;
-      --accent2: #ff7c5c;
-      --green: #2ecc71;
-      --yellow: #f1c40f;
-      --red: #e74c3c;
-      --blue: #3498db;
-      --text: #f0f0f5;
-      --muted: #888899;
-      --font-head: 'Syne', sans-serif;
-      --font-mono: 'Space Mono', monospace;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-head); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-
-    /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
-
-    /* NAV */
-    nav {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 18px 40px; background: rgba(10,10,15,0.95);
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 100;
-      backdrop-filter: blur(10px);
-    }
-    .nav-logo { font-size: 22px; font-weight: 800; letter-spacing: -1px; }
-    .nav-logo span { color: var(--accent); }
-    .nav-btns { display: flex; gap: 12px; }
-    .btn {
-      padding: 9px 22px; border-radius: 6px; font-family: var(--font-head);
-      font-weight: 700; font-size: 14px; cursor: pointer; border: none;
-      transition: all 0.2s;
-    }
-    .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
-    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
-    .btn-green { background: var(--green); color: #fff; }
-    .btn-green:hover { opacity: 0.85; }
-    .btn-blue { background: var(--blue); color: #fff; }
-    .btn-blue:hover { opacity: 0.85; }
-    .btn-sm { padding: 6px 14px; font-size: 12px; }
-    .btn-full { width: 100%; margin-top: 6px; padding: 12px; font-size: 15px; }
-
-    /* HERO */
-    #homePage {
-      min-height: calc(100vh - 65px);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; padding: 60px 20px;
-      background: radial-gradient(ellipse at 50% 0%, rgba(224,76,47,0.12) 0%, transparent 70%);
-    }
-    .hero-tag {
-      display: inline-block; font-family: var(--font-mono);
-      font-size: 11px; letter-spacing: 3px; color: var(--accent);
-      border: 1px solid var(--accent); padding: 5px 14px; border-radius: 20px;
-      margin-bottom: 28px; text-transform: uppercase;
-    }
-    .hero-title {
-      font-size: clamp(42px, 8vw, 80px); font-weight: 800;
-      line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px;
-    }
-    .hero-title span { color: var(--accent); }
-    .hero-sub {
-      font-size: 17px; color: var(--muted); max-width: 520px;
-      line-height: 1.7; margin-bottom: 40px; font-weight: 400;
-    }
-    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-    .features {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 20px; max-width: 900px; margin: 70px auto 0; width: 100%;
-    }
-    .feature-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-    .feature-card:hover { border-color: var(--accent); transform: translateY(-3px); }
-    .feature-icon { font-size: 28px; margin-bottom: 12px; }
-    .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-
-    /* DASHBOARD */
-    #dashboard { display: none; padding: 30px 40px; max-width: 1100px; margin: 0 auto; }
-    .dash-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 30px; flex-wrap: wrap; gap: 16px;
-    }
-    .dash-header h2 { font-size: 26px; font-weight: 800; }
-    .dash-header h2 span { color: var(--accent); }
-    .role-badge {
-      font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
-      padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
-      background: var(--accent); color: #fff;
-    }
-    .role-badge.teacher { background: var(--blue); }
-    .role-badge.admin { background: #9b59b6; }
-
-    /* STATS ROW */
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 10px; padding: 20px; text-align: center;
-    }
-    .stat-card .stat-val { font-size: 32px; font-weight: 800; color: var(--accent); font-family: var(--font-mono); }
-    .stat-card .stat-val.green { color: var(--green); }
-    .stat-card .stat-val.yellow { color: var(--yellow); }
-    .stat-card .stat-val.blue { color: var(--blue); }
-    .stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-    /* CARDS */
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px; margin-bottom: 20px;
-    }
-    .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
-    .card h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
-
-    /* TABLE */
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { text-align: left; padding: 10px 14px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); font-family: var(--font-mono); }
-    td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-    .badge {
-      display: inline-block; padding: 3px 10px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; font-family: var(--font-mono);
-    }
-    .badge-green { background: rgba(46,204,113,0.15); color: var(--green); }
-    .badge-red { background: rgba(231,76,60,0.15); color: var(--red); }
-    .badge-yellow { background: rgba(241,196,15,0.15); color: var(--yellow); }
-
-    /* ATTENDANCE BAR */
-    .att-bar-wrap { margin-top: 6px; background: var(--border); border-radius: 4px; height: 6px; }
-    .att-bar { height: 6px; border-radius: 4px; background: var(--green); transition: width 0.5s; }
-    .att-bar.warn { background: var(--yellow); }
-    .att-bar.danger { background: var(--red); }
-
-    /* CODE BOX */
-    .code-display {
-      background: var(--bg); border: 2px solid var(--accent);
-      border-radius: 12px; padding: 28px; text-align: center; margin-bottom: 20px;
-    }
-    .code-num {
-      font-family: var(--font-mono); font-size: 52px; font-weight: 700;
-      letter-spacing: 10px; color: var(--accent);
-    }
-    .code-timer { font-family: var(--font-mono); font-size: 14px; color: var(--muted); margin-top: 10px; }
-    .code-timer span { color: var(--yellow); font-size: 18px; }
-    .timer-bar-wrap { background: var(--border); border-radius: 4px; height: 4px; margin-top: 12px; }
-    .timer-bar { height: 4px; border-radius: 4px; background: var(--accent); transition: width 1s linear; }
-
-    /* FORM ELEMENTS */
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 12px; font-family: var(--font-mono); letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
-    .form-group input, .form-group select {
-      width: 100%; padding: 11px 14px; background: var(--bg);
-      border: 1.5px solid var(--border); border-radius: 8px;
-      color: var(--text); font-family: var(--font-head); font-size: 14px;
-      transition: border-color 0.2s;
-    }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
-    .form-group select option { background: var(--bg2); }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
-    /* MODAL */
-    .modal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.75); display: none; align-items: center;
-      justify-content: center; z-index: 999; backdrop-filter: blur(4px);
-    }
-    .modal.active { display: flex; }
-    .modal-box {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; width: 100%; max-width: 420px;
-      padding: 32px; position: relative; animation: popIn 0.2s ease;
-    }
-    @keyframes popIn { from { transform: scale(0.93) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-    .modal-box h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-    .modal-box p.sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
-    .modal-close {
-      position: absolute; top: 16px; right: 18px;
-      background: none; border: none; color: var(--muted);
-      font-size: 20px; cursor: pointer; line-height: 1;
-    }
-    .modal-close:hover { color: var(--text); }
-    .modal-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
-    .modal-tab {
-      flex: 1; padding: 10px; text-align: center; font-size: 13px;
-      font-weight: 700; cursor: pointer; color: var(--muted);
-      border-bottom: 2px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;
-      font-family: var(--font-head);
-    }
-    .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
-    .err-msg { color: var(--red); font-size: 12px; margin-top: -8px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
-    .succ-msg { color: var(--green); font-size: 12px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
-
-    /* OTP INPUT */
-    .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 16px 0; }
-    .otp-inputs input {
-      width: 48px; height: 52px; text-align: center;
-      font-size: 22px; font-family: var(--font-mono); font-weight: 700;
-      background: var(--bg); border: 1.5px solid var(--border);
-      border-radius: 8px; color: var(--text);
-    }
-    .otp-inputs input:focus { outline: none; border-color: var(--accent); }
-
-    /* SUBJECT TAG */
-    .subj-tag {
-      display: inline-block; padding: 3px 10px; border-radius: 4px;
-      font-size: 11px; font-family: var(--font-mono);
-      background: rgba(52,152,219,0.15); color: var(--blue);
-    }
-
-    /* TOAST */
-    #toast {
-      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px);
-      background: var(--card); border: 1px solid var(--border);
-      padding: 12px 24px; border-radius: 30px; font-size: 14px;
-      z-index: 9999; transition: transform 0.3s ease; white-space: nowrap;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-    #toast.success { border-color: var(--green); color: var(--green); }
-    #toast.error { border-color: var(--red); color: var(--red); }
-
-    /* SECTION TABS (dashboard) */
-    .dash-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-    .dash-tab {
-      padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
-      cursor: pointer; border: 1.5px solid var(--border); background: transparent;
-      color: var(--muted); font-family: var(--font-head); transition: all 0.2s;
-    }
-    .dash-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .dash-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
-    .dash-section { display: none; }
-    .dash-section.active { display: block; }
-
-    /* ATTENDANCE % CIRCLE */
-    .att-circle {
-      width: 90px; height: 90px; border-radius: 50%;
-      border: 5px solid var(--border); display: flex;
-      flex-direction: column; align-items: center; justify-content: center;
-      font-family: var(--font-mono);
-    }
-    .att-circle .pct { font-size: 20px; font-weight: 700; }
-    .att-circle .lbl { font-size: 9px; color: var(--muted); }
-
-    /* GRID 2COL */
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media(max-width:680px) {
-      .grid2 { grid-template-columns: 1fr; }
-      nav { padding: 14px 20px; }
-      #dashboard { padding: 20px; }
-      .form-row { grid-template-columns: 1fr; }
-      .hero-title { font-size: 36px; }
-    }
-
-    /* EMPTY STATE */
-    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
-    .empty .e-icon { font-size: 36px; margin-bottom: 10px; }
-
-    /* LOGOUT BTN in nav */
-    #logoutBtn { display: none; }
-    #userInfo { display: none; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
-    #userInfo strong { color: var(--text); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartAttend</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  emailjs.init("IGGbp3DhZIHJeZdCI");
+</script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --card: #16161f;
+  --border: #2a2a3a;
+  --accent: #e04c2f;
+  --accent2: #ff7c5c;
+  --green: #2ecc71;
+  --yellow: #f1c40f;
+  --red: #e74c3c;
+  --blue: #3498db;
+  --text: #f0f0f5;
+  --muted: #888899;
+  --font-head: 'Syne', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-head); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 40px; background: rgba(10,10,15,0.95);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(10px);
+}
+.nav-logo { font-size: 22px; font-weight: 800; letter-spacing: -1px; }
+.nav-logo span { color: var(--accent); }
+.nav-btns { display: flex; gap: 12px; }
+.btn {
+  padding: 9px 22px; border-radius: 6px; font-family: var(--font-head);
+  font-weight: 700; font-size: 14px; cursor: pointer; border: none;
+  transition: all 0.2s;
+}
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { opacity: 0.85; }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-blue:hover { opacity: 0.85; }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+.btn-full { width: 100%; margin-top: 6px; padding: 12px; font-size: 15px; }
+#homePage {
+  min-height: calc(100vh - 65px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 60px 20px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(224,76,47,0.12) 0%, transparent 70%);
+}
+.hero-tag {
+  display: inline-block; font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 3px; color: var(--accent);
+  border: 1px solid var(--accent); padding: 5px 14px; border-radius: 20px;
+  margin-bottom: 28px; text-transform: uppercase;
+}
+.hero-title {
+  font-size: clamp(42px, 8vw, 80px); font-weight: 800;
+  line-height: 1.05; letter-spacing: -2px; margin-bottom: 20px;
+}
+.hero-title span { color: var(--accent); }
+.hero-sub {
+  font-size: 17px; color: var(--muted); max-width: 520px;
+  line-height: 1.7; margin-bottom: 40px; font-weight: 400;
+}
+.hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.features {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px; max-width: 900px; margin: 70px auto 0; width: 100%;
+}
+.feature-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.feature-icon { font-size: 28px; margin-bottom: 12px; }
+.feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+#dashboard { display: none; padding: 30px 40px; max-width: 1100px; margin: 0 auto; }
+.dash-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 30px; flex-wrap: wrap; gap: 16px;
+}
+.dash-header h2 { font-size: 26px; font-weight: 800; }
+.dash-header h2 span { color: var(--accent); }
+.role-badge {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+  padding: 4px 12px; border-radius: 20px; text-transform: uppercase;
+  background: var(--accent); color: #fff;
+}
+.role-badge.teacher { background: var(--blue); }
+.role-badge.admin { background: #9b59b6; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px; text-align: center;
+}
+.stat-card .stat-val { font-size: 32px; font-weight: 800; color: var(--accent); font-family: var(--font-mono); }
+.stat-card .stat-val.green { color: var(--green); }
+.stat-card .stat-val.yellow { color: var(--yellow); }
+.stat-card .stat-val.blue { color: var(--blue); }
+.stat-card .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; margin-bottom: 20px;
+}
+.card h3 { font-size: 16px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+.card h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 10px 14px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); font-family: var(--font-mono); }
+td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+}
+.badge-green { background: rgba(46,204,113,0.15); color: var(--green); }
+.badge-red { background: rgba(231,76,60,0.15); color: var(--red); }
+.badge-yellow { background: rgba(241,196,15,0.15); color: var(--yellow); }
+.att-bar-wrap { margin-top: 6px; background: var(--border); border-radius: 4px; height: 6px; }
+.att-bar { height: 6px; border-radius: 4px; background: var(--green); transition: width 0.5s; }
+.att-bar.warn { background: var(--yellow); }
+.att-bar.danger { background: var(--red); }
+.code-display {
+  background: var(--bg); border: 2px solid var(--accent);
+  border-radius: 12px; padding: 28px; text-align: center; margin-bottom: 20px;
+}
+.code-num {
+  font-family: var(--font-mono); font-size: 52px; font-weight: 700;
+  letter-spacing: 10px; color: var(--accent);
+}
+.code-timer { font-family: var(--font-mono); font-size: 14px; color: var(--muted); margin-top: 10px; }
+.code-timer span { color: var(--yellow); font-size: 18px; }
+.timer-bar-wrap { background: var(--border); border-radius: 4px; height: 4px; margin-top: 12px; }
+.timer-bar { height: 4px; border-radius: 4px; background: var(--accent); transition: width 1s linear; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; font-family: var(--font-mono); letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+.form-group input, .form-group select {
+  width: 100%; padding: 11px 14px; background: var(--bg);
+  border: 1.5px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--font-head); font-size: 14px;
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+.form-group select option { background: var(--bg2); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.75); display: none; align-items: center;
+  justify-content: center; z-index: 999; backdrop-filter: blur(4px);
+}
+.modal.active { display: flex; }
+.modal-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 16px; width: 100%; max-width: 420px;
+  padding: 32px; position: relative; animation: popIn 0.2s ease;
+}
+@keyframes popIn { from { transform: scale(0.93) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+.modal-box h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+.modal-box p.sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+.modal-close {
+  position: absolute; top: 16px; right: 18px;
+  background: none; border: none; color: var(--muted);
+  font-size: 20px; cursor: pointer; line-height: 1;
+}
+.modal-close:hover { color: var(--text); }
+.modal-tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.modal-tab {
+  flex: 1; padding: 10px; text-align: center; font-size: 13px;
+  font-weight: 700; cursor: pointer; color: var(--muted);
+  border-bottom: 2px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;
+  font-family: var(--font-head);
+}
+.modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+.err-msg { color: var(--red); font-size: 12px; margin-top: -8px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
+.succ-msg { color: var(--green); font-size: 12px; margin-bottom: 10px; font-family: var(--font-mono); display: none; }
+.otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 16px 0; }
+.otp-inputs input {
+  width: 48px; height: 52px; text-align: center;
+  font-size: 22px; font-family: var(--font-mono); font-weight: 700;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text);
+}
+.otp-inputs input:focus { outline: none; border-color: var(--accent); }
+.subj-tag {
+  display: inline-block; padding: 3px 10px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-mono);
+  background: rgba(52,152,219,0.15); color: var(--blue);
+}
+#toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 12px 24px; border-radius: 30px; font-size: 14px;
+  z-index: 9999; transition: transform 0.3s ease; white-space: nowrap;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--green); color: var(--green); }
+#toast.error { border-color: var(--red); color: var(--red); }
+.dash-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.dash-tab {
+  padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: 1.5px solid var(--border); background: transparent;
+  color: var(--muted); font-family: var(--font-head); transition: all 0.2s;
+}
+.dash-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.dash-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+.dash-section { display: none; }
+.dash-section.active { display: block; }
+.att-circle {
+  width: 90px; height: 90px; border-radius: 50%;
+  border: 5px solid var(--border); display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+}
+.att-circle .pct { font-size: 20px; font-weight: 700; }
+.att-circle .lbl { font-size: 9px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media(max-width:680px) {
+  .grid2 { grid-template-columns: 1fr; }
+  nav { padding: 14px 20px; }
+  #dashboard { padding: 20px; }
+  .form-row { grid-template-columns: 1fr; }
+  .hero-title { font-size: 36px; }
+}
+.empty { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+.empty .e-icon { font-size: 36px; margin-bottom: 10px; }
+#logoutBtn { display: none; }
+#userInfo { display: none; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+#userInfo strong { color: var(--text); }
+</style>
 </head>
 <body>
 
-<!-- NAV -->
 <nav>
   <div class="nav-logo">Smart<span>Attend</span></div>
   <div style="display:flex;align-items:center;gap:12px">
-    <div id="userInfo">
-      Welcome, <strong id="navName">—</strong>
-    </div>
+    <div id="userInfo">Welcome, <strong id="navName">—</strong></div>
     <div class="nav-btns" id="authBtns">
       <button class="btn btn-outline" onclick="openAuth('login')">Login</button>
       <button class="btn btn-primary" onclick="openAuth('register')">Register</button>
@@ -300,7 +264,6 @@
   </div>
 </nav>
 
-<!-- HOME PAGE -->
 <div id="homePage">
   <div class="hero-tag">✦ Attendance Reinvented</div>
   <h1 class="hero-title">Attendance that<br>actually <span>works</span></h1>
@@ -310,30 +273,13 @@
     <button class="btn btn-outline" onclick="openAuth('login')">Sign In</button>
   </div>
   <div class="features">
-    <div class="feature-card">
-      <div class="feature-icon">⏱️</div>
-      <h3>2-Minute Codes</h3>
-      <p>Teachers generate live codes that expire in 2 minutes — no proxy attendance possible.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">📊</div>
-      <h3>Per-Subject Tracking</h3>
-      <p>Track attendance separately for every subject with real-time percentage updates.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔐</div>
-      <h3>OTP Verified Login</h3>
-      <p>Every login is verified with a one-time password sent directly to your email.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🛡️</div>
-      <h3>Admin Control</h3>
-      <p>Administrators can manage all students, teachers, and attendance records seamlessly.</p>
-    </div>
+    <div class="feature-card"><div class="feature-icon">⏱️</div><h3>2-Minute Codes</h3><p>Teachers generate live codes that expire in 2 minutes — no proxy attendance possible.</p></div>
+    <div class="feature-card"><div class="feature-icon">📊</div><h3>Per-Subject Tracking</h3><p>Track attendance separately for every subject with real-time percentage updates.</p></div>
+    <div class="feature-card"><div class="feature-icon">🔐</div><h3>OTP Verified Login</h3><p>Every login is verified with a one-time password sent directly to your email.</p></div>
+    <div class="feature-card"><div class="feature-icon">🛡️</div><h3>Admin Control</h3><p>Administrators can manage all students, teachers, and attendance records seamlessly.</p></div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="dash-header">
     <div>
@@ -352,25 +298,20 @@
       <button class="dash-tab" onclick="showDashTab('sMarkAtt','studentDash')">Mark Attendance</button>
       <button class="dash-tab" onclick="showDashTab('sSubjects','studentDash')">My Subjects</button>
     </div>
-    <!-- Overview -->
     <div id="sOverview" class="dash-section active">
       <div class="stats-row" id="studentStats"></div>
       <div class="card">
         <h3><span class="dot"></span> Attendance Summary</h3>
         <table>
           <thead><tr><th>Subject</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead>
-          <tbody id="studentAttTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">📭</div>No records yet</div></td></tr></tbody>
+          <tbody id="studentAttTable"><tr><td colspan="5"><div class="empty"><div class="e-icon">📭</div>Loading...</div></td></tr></tbody>
         </table>
       </div>
     </div>
-    <!-- Mark Attendance -->
     <div id="sMarkAtt" class="dash-section">
       <div class="card" style="max-width:480px;margin:0 auto">
         <h3><span class="dot"></span> Mark Your Attendance</h3>
-        <div class="form-group">
-          <label>Subject</label>
-          <select id="markSubject"></select>
-        </div>
+        <div class="form-group"><label>Subject</label><select id="markSubject"></select></div>
         <div class="form-group">
           <label>6-Digit Attendance Code</label>
           <input id="markCode" maxlength="6" placeholder="Enter code given by teacher" style="font-family:var(--font-mono);font-size:22px;letter-spacing:6px;text-align:center">
@@ -380,12 +321,8 @@
         <button class="btn btn-primary btn-full" onclick="markAttendance()">✓ Mark Present</button>
       </div>
     </div>
-    <!-- Subjects -->
     <div id="sSubjects" class="dash-section">
-      <div class="card">
-        <h3><span class="dot"></span> My Enrolled Subjects</h3>
-        <div id="studentSubjectList"></div>
-      </div>
+      <div class="card"><h3><span class="dot"></span> My Enrolled Subjects</h3><div id="studentSubjectList"></div></div>
     </div>
   </div>
 
@@ -397,7 +334,6 @@
       <button class="dash-tab" onclick="showDashTab('tViewAtt','teacherDash')">View Attendance</button>
       <button class="dash-tab" onclick="showDashTab('tSubjects','teacherDash')">Subjects</button>
     </div>
-    <!-- Overview -->
     <div id="tOverview" class="dash-section active">
       <div class="stats-row" id="teacherStats"></div>
       <div class="card">
@@ -408,14 +344,10 @@
         </table>
       </div>
     </div>
-    <!-- Generate Code -->
     <div id="tGenCode" class="dash-section">
       <div class="card" style="max-width:480px;margin:0 auto">
         <h3><span class="dot"></span> Generate Attendance Code</h3>
-        <div class="form-group">
-          <label>Select Subject</label>
-          <select id="codeSubject"></select>
-        </div>
+        <div class="form-group"><label>Select Subject</label><select id="codeSubject"></select></div>
         <button class="btn btn-primary btn-full" onclick="generateCode()" id="genCodeBtn">⚡ Generate Code</button>
         <div id="codeDisplay" style="display:none;margin-top:20px">
           <div class="code-display">
@@ -428,7 +360,6 @@
         </div>
       </div>
     </div>
-    <!-- View Attendance -->
     <div id="tViewAtt" class="dash-section">
       <div class="card">
         <h3><span class="dot"></span> Student Attendance Records</h3>
@@ -444,7 +375,6 @@
         </table>
       </div>
     </div>
-    <!-- Subjects -->
     <div id="tSubjects" class="dash-section">
       <div class="card">
         <h3><span class="dot"></span> Manage Subjects</h3>
@@ -465,21 +395,13 @@
       <button class="dash-tab" onclick="showDashTab('aTeachers','adminDash')">Teachers</button>
       <button class="dash-tab" onclick="showDashTab('aAttendance','adminDash')">All Attendance</button>
     </div>
-    <!-- Overview -->
     <div id="aOverview" class="dash-section active">
       <div class="stats-row" id="adminStats"></div>
       <div class="grid2">
-        <div class="card">
-          <h3><span class="dot"></span> Recent Registrations</h3>
-          <div id="adminRecentUsers"></div>
-        </div>
-        <div class="card">
-          <h3><span class="dot"></span> Active Sessions Today</h3>
-          <div id="adminActiveSessions"></div>
-        </div>
+        <div class="card"><h3><span class="dot"></span> Recent Registrations</h3><div id="adminRecentUsers"></div></div>
+        <div class="card"><h3><span class="dot"></span> Active Sessions Today</h3><div id="adminActiveSessions"></div></div>
       </div>
     </div>
-    <!-- Students -->
     <div id="aStudents" class="dash-section">
       <div class="card">
         <h3><span class="dot"></span> All Students</h3>
@@ -489,7 +411,6 @@
         </table>
       </div>
     </div>
-    <!-- Teachers -->
     <div id="aTeachers" class="dash-section">
       <div class="card">
         <h3><span class="dot"></span> All Teachers</h3>
@@ -499,7 +420,6 @@
         </table>
       </div>
     </div>
-    <!-- All Attendance -->
     <div id="aAttendance" class="dash-section">
       <div class="card">
         <h3><span class="dot"></span> All Attendance Records</h3>
@@ -520,7 +440,6 @@
       <button class="modal-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
       <button class="modal-tab" id="tabRegister" onclick="switchTab('register')">Register</button>
     </div>
-
     <!-- LOGIN TAB -->
     <div class="tab-content active" id="loginTab">
       <h2>Welcome back</h2>
@@ -530,7 +449,6 @@
       <div class="err-msg" id="loginErr">Invalid credentials. Try again.</div>
       <button class="btn btn-primary btn-full" onclick="login()">Continue →</button>
     </div>
-
     <!-- REGISTER TAB -->
     <div class="tab-content" id="registerTab">
       <h2>Create account</h2>
@@ -550,7 +468,6 @@
       <div class="err-msg" id="regErr"></div>
       <button class="btn btn-primary btn-full" onclick="register()">Create Account →</button>
     </div>
-
     <!-- OTP TAB -->
     <div class="tab-content" id="otpTab">
       <h2>Verify your email</h2>
@@ -571,16 +488,33 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
 <script>
+// ========== EMAILJS CONFIG ==========
+const EJ_SERVICE  = 'service_duwjaa8';
+const EJ_TEMPLATE = 'template_teh8bqo';
+
+async function sendOTPEmail(toEmail, toName, otp) {
+  try {
+    await emailjs.send(EJ_SERVICE, EJ_TEMPLATE, {
+      email: toEmail,       // matches {{email}} in your template
+      passcode: otp         // matches {{passcode}} in your template
+    });
+    console.log('OTP email sent via EmailJS');
+  } catch (err) {
+    console.error('EmailJS error:', err);
+    // Don't block the user — OTP is still stored in DB
+  }
+}
+
 // ========== STATE ==========
 let currentUser = null;
 let otpPendingEmail = '';
-let otpPendingAction = ''; // 'login' | 'register'
+let otpPendingName = '';
+let otpPendingAction = '';
 let codeTimer = null;
-const API = '';  // Flask runs on same origin
+const API = '';
 
 // ========== TOAST ==========
 function toast(msg, type='success') {
@@ -622,365 +556,355 @@ function clearOTPInputs() {
 
 // ========== AUTH ==========
 async function register() {
-  const name = document.getElementById('r_name').value.trim();
+  const name  = document.getElementById('r_name').value.trim();
   const email = document.getElementById('r_email').value.trim();
-  const pass = document.getElementById('r_pass').value;
-  const type = document.getElementById('r_type').value;
-  const err = document.getElementById('regErr');
+  const pwd   = document.getElementById('r_pass').value;
+  const type  = document.getElementById('r_type').value;
+  const err   = document.getElementById('regErr');
   err.style.display = 'none';
-  if (!name || !email || !pass) { err.textContent = 'All fields required.'; err.style.display = 'block'; return; }
-  if (pass.length < 6) { err.textContent = 'Password min 6 characters.'; err.style.display = 'block'; return; }
+
+  if (!name || !email || !pwd) { err.textContent = 'All fields required.'; err.style.display = 'block'; return; }
+
   try {
-    const res = await fetch(`${API}/register`, { method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name, email, password: pass, type }) });
+    const res  = await fetch('/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, email, password: pwd, type}) });
     const data = await res.json();
-    if (res.ok) {
-      otpPendingEmail = email;
-      otpPendingAction = 'register';
-      document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
-      clearOTPInputs();
-      switchTab('otp');
-    } else { err.textContent = data.message || 'Registration failed.'; err.style.display = 'block'; }
-  } catch(e) { err.textContent = 'Server error. Try again.'; err.style.display = 'block'; }
+    if (!res.ok) { err.textContent = data.message; err.style.display = 'block'; return; }
+
+    otpPendingEmail  = email;
+    otpPendingName   = data.name || name;
+    otpPendingAction = 'register';
+
+    // Send OTP via EmailJS
+    await sendOTPEmail(email, otpPendingName, data.otp);
+
+    switchTab('otp');
+    document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
+    toast('OTP sent! Check your inbox.');
+  } catch(e) {
+    err.textContent = 'Server error. Try again.'; err.style.display = 'block';
+  }
 }
 
 async function login() {
   const email = document.getElementById('l_email').value.trim();
-  const pass = document.getElementById('l_pass').value;
-  const err = document.getElementById('loginErr');
+  const pwd   = document.getElementById('l_pass').value;
+  const err   = document.getElementById('loginErr');
   err.style.display = 'none';
+
   try {
-    const res = await fetch(`${API}/login`, { method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email, password: pass }) });
+    const res  = await fetch('/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password: pwd}) });
     const data = await res.json();
-    if (res.ok) {
-      otpPendingEmail = email;
-      otpPendingAction = 'login';
-      document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
-      clearOTPInputs();
-      switchTab('otp');
-    } else { err.textContent = data.message || 'Invalid credentials.'; err.style.display = 'block'; }
-  } catch(e) { err.textContent = 'Server error. Try again.'; err.style.display = 'block'; }
+    if (!res.ok) { err.style.display = 'block'; return; }
+
+    otpPendingEmail  = email;
+    otpPendingName   = data.name || '';
+    otpPendingAction = 'login';
+
+    // Send OTP via EmailJS
+    await sendOTPEmail(email, otpPendingName, data.otp);
+
+    switchTab('otp');
+    document.getElementById('otpSubtitle').textContent = `OTP sent to ${email}`;
+    toast('OTP sent! Check your inbox.');
+  } catch(e) {
+    err.style.display = 'block';
+  }
 }
 
 async function verifyOTP() {
   const otp = getOTPValue();
-  const err = document.getElementById('otpErr');
+  const err  = document.getElementById('otpErr');
   const succ = document.getElementById('otpSucc');
   err.style.display = 'none'; succ.style.display = 'none';
+
   if (otp.length < 6) { err.textContent = 'Enter all 6 digits.'; err.style.display = 'block'; return; }
+
   try {
-    const res = await fetch(`${API}/verify`, { method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email: otpPendingEmail, otp }) });
+    const res  = await fetch('/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: otpPendingEmail, otp}) });
     const data = await res.json();
-    if (res.ok) {
-      succ.textContent = 'Verified! Logging you in...'; succ.style.display = 'block';
-      setTimeout(() => { closeModal(); setUser(data.user); }, 800);
-    } else { err.textContent = data.message || 'Wrong OTP.'; err.style.display = 'block'; }
-  } catch(e) { err.textContent = 'Server error.'; err.style.display = 'block'; }
+    if (!res.ok) { err.textContent = data.message || 'Invalid OTP.'; err.style.display = 'block'; clearOTPInputs(); return; }
+
+    currentUser = data.user;
+    localStorage.setItem('smartattend_user', JSON.stringify(currentUser));
+    succ.textContent = 'Verified!'; succ.style.display = 'block';
+    setTimeout(() => { closeModal(); initDashboard(); }, 600);
+  } catch(e) {
+    err.textContent = 'Server error.'; err.style.display = 'block';
+  }
 }
 
 async function resendOTP() {
+  const succ = document.getElementById('otpSucc');
+  const err  = document.getElementById('otpErr');
+  err.style.display = 'none'; succ.style.display = 'none';
+
   try {
-    await fetch(`${API}/resend-otp`, { method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ email: otpPendingEmail }) });
-    toast('OTP resent to ' + otpPendingEmail);
-  } catch(e) { toast('Failed to resend OTP', 'error'); }
+    const res  = await fetch('/resend-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: otpPendingEmail}) });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.message; err.style.display = 'block'; return; }
+
+    // Send new OTP via EmailJS
+    await sendOTPEmail(otpPendingEmail, otpPendingName, data.otp);
+
+    clearOTPInputs();
+    succ.textContent = 'New OTP sent!'; succ.style.display = 'block';
+    toast('New OTP sent!');
+  } catch(e) {
+    err.textContent = 'Server error.'; err.style.display = 'block';
+  }
 }
 
 function logout() {
   currentUser = null;
+  localStorage.removeItem('smartattend_user');
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('homePage').style.display = 'flex';
   document.getElementById('authBtns').style.display = 'flex';
-  document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('userInfo').style.display = 'none';
-  if (codeTimer) clearInterval(codeTimer);
-  toast('Logged out successfully');
+  document.getElementById('logoutBtn').style.display = 'none';
+  toast('Logged out.');
 }
 
-// ========== SET USER & LOAD DASHBOARD ==========
-function setUser(user) {
-  currentUser = user;
+// ========== DASHBOARD INIT ==========
+function initDashboard() {
   document.getElementById('homePage').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('authBtns').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'block';
   document.getElementById('userInfo').style.display = 'flex';
-  document.getElementById('navName').textContent = user.name;
-  document.getElementById('dashTitle').innerHTML = `Dashboard <span>— ${user.name}</span>`;
-  document.getElementById('dashSubtitle').textContent = user.email;
-  const rb = document.getElementById('roleBadge');
-  rb.textContent = user.type.charAt(0).toUpperCase() + user.type.slice(1);
-  rb.className = 'role-badge ' + user.type;
+  document.getElementById('logoutBtn').style.display = 'block';
+  document.getElementById('navName').textContent = currentUser.name;
+  document.getElementById('dashTitle').innerHTML = `Dashboard <span>— ${currentUser.name}</span>`;
+
+  const badge = document.getElementById('roleBadge');
+  badge.textContent = currentUser.type;
+  badge.className = `role-badge ${currentUser.type}`;
+
   ['studentDash','teacherDash','adminDash'].forEach(d => document.getElementById(d).classList.remove('active'));
-  if (user.type === 'student') { document.getElementById('studentDash').classList.add('active'); loadStudentDashboard(); }
-  else if (user.type === 'teacher') { document.getElementById('teacherDash').classList.add('active'); loadTeacherDashboard(); }
-  else if (user.type === 'admin') { document.getElementById('adminDash').classList.add('active'); loadAdminDashboard(); }
+
+  if (currentUser.type === 'student') {
+    document.getElementById('studentDash').classList.add('active');
+    loadStudentDashboard();
+  } else if (currentUser.type === 'teacher') {
+    document.getElementById('teacherDash').classList.add('active');
+    loadTeacherDashboard();
+  } else if (currentUser.type === 'admin') {
+    document.getElementById('adminDash').classList.add('active');
+    loadAdminDashboard();
+  }
 }
 
-// ========== DASH TABS ==========
-function showDashTab(sectionId, parentId) {
+function showDashTab(tabId, parentId) {
   const parent = document.getElementById(parentId);
   parent.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
   parent.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(sectionId).classList.add('active');
+  document.getElementById(tabId).classList.add('active');
   event.target.classList.add('active');
+}
+
+function authHeaders() {
+  return { 'Content-Type':'application/json', 'X-User-Email': currentUser?.email || '' };
 }
 
 // ========== STUDENT ==========
 async function loadStudentDashboard() {
-  try {
-    const res = await fetch(`${API}/student/dashboard`, { headers: {'X-User-Email': currentUser.email} });
-    const data = await res.json();
-    // Stats
-    const total = data.subjects ? data.subjects.length : 0;
-    const avgPct = data.subjects && data.subjects.length ? Math.round(data.subjects.reduce((a,s) => a + s.percentage, 0) / data.subjects.length) : 0;
-    document.getElementById('studentStats').innerHTML = `
-      <div class="stat-card"><div class="stat-val blue">${total}</div><div class="stat-label">Subjects</div></div>
-      <div class="stat-card"><div class="stat-val ${avgPct >= 75 ? 'green' : avgPct >= 60 ? 'yellow' : ''}">${avgPct}%</div><div class="stat-label">Avg Attendance</div></div>
-      <div class="stat-card"><div class="stat-val green">${data.total_present || 0}</div><div class="stat-label">Total Present</div></div>
-      <div class="stat-card"><div class="stat-val">${data.total_classes || 0}</div><div class="stat-label">Total Classes</div></div>
-    `;
-    // Table
-    if (data.subjects && data.subjects.length) {
-      document.getElementById('studentAttTable').innerHTML = data.subjects.map(s => {
-        const pct = s.percentage;
-        const barClass = pct >= 75 ? '' : pct >= 60 ? 'warn' : 'danger';
-        const badge = pct >= 75 ? 'badge-green' : pct >= 60 ? 'badge-yellow' : 'badge-red';
-        return `<tr>
-          <td><span class="subj-tag">${s.name}</span></td>
-          <td>${s.present}</td><td>${s.total}</td>
-          <td>
-            <div style="font-weight:700;font-family:var(--font-mono)">${pct}%</div>
-            <div class="att-bar-wrap"><div class="att-bar ${barClass}" style="width:${pct}%"></div></div>
-          </td>
-          <td><span class="badge ${badge}">${pct >= 75 ? 'Good' : pct >= 60 ? 'Low' : 'Critical'}</span></td>
-        </tr>`;
-      }).join('');
-    }
-    // Subject dropdown for mark attendance
-    const subjectSel = document.getElementById('markSubject');
-    subjectSel.innerHTML = data.subjects ? data.subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('') : '';
-    // Subject list
-    document.getElementById('studentSubjectList').innerHTML = data.subjects && data.subjects.length ?
-      `<table><thead><tr><th>Subject</th><th>Teacher</th><th>Attendance %</th></tr></thead><tbody>
-        ${data.subjects.map(s => `<tr><td><span class="subj-tag">${s.name}</span></td><td>${s.teacher || '—'}</td><td style="font-family:var(--font-mono);font-weight:700;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')}
-      </tbody></table>` : '<div class="empty"><div class="e-icon">📚</div>No subjects enrolled yet</div>';
-  } catch(e) { toast('Failed to load dashboard', 'error'); }
+  const res  = await fetch('/student/dashboard', { headers: authHeaders() });
+  const data = await res.json();
+  const subjects = data.subjects || [];
+
+  const totalPct = data.total_classes > 0 ? Math.round(data.total_present / data.total_classes * 100) : 0;
+  document.getElementById('studentStats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${subjects.length}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val green">${data.total_present}</div><div class="stat-label">Total Present</div></div>
+    <div class="stat-card"><div class="stat-val blue">${data.total_classes}</div><div class="stat-label">Total Classes</div></div>
+    <div class="stat-card"><div class="stat-val ${totalPct >= 75 ? 'green' : totalPct >= 60 ? 'yellow' : ''}">${totalPct}%</div><div class="stat-label">Overall %</div></div>
+  `;
+
+  const tbody = document.getElementById('studentAttTable');
+  if (!subjects.length) { tbody.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="e-icon">📭</div>No subjects yet</div></td></tr>'; return; }
+  tbody.innerHTML = subjects.map(s => {
+    const cls = s.percentage >= 75 ? 'badge-green' : s.percentage >= 60 ? 'badge-yellow' : 'badge-red';
+    const barCls = s.percentage >= 75 ? '' : s.percentage >= 60 ? 'warn' : 'danger';
+    return `<tr>
+      <td><strong>${s.name}</strong><br><small style="color:var(--muted)">${s.teacher||'—'}</small></td>
+      <td>${s.present}</td><td>${s.total}</td>
+      <td><div>${s.percentage}%</div><div class="att-bar-wrap"><div class="att-bar ${barCls}" style="width:${s.percentage}%"></div></div></td>
+      <td><span class="badge ${cls}">${s.percentage >= 75 ? 'Good' : s.percentage >= 60 ? 'Low' : 'Critical'}</span></td>
+    </tr>`;
+  }).join('');
+
+  const sel = document.getElementById('markSubject');
+  sel.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  const subList = document.getElementById('studentSubjectList');
+  subList.innerHTML = subjects.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div><strong>${s.name}</strong><span style="margin-left:10px;font-size:12px;color:var(--muted)">by ${s.teacher||'—'}</span></div>
+      <span class="badge ${s.percentage>=75?'badge-green':s.percentage>=60?'badge-yellow':'badge-red'}">${s.percentage}%</span>
+    </div>
+  `).join('');
 }
 
 async function markAttendance() {
-  const subjectId = document.getElementById('markSubject').value;
-  const code = document.getElementById('markCode').value.trim();
-  const err = document.getElementById('markErr');
+  const subject_id = document.getElementById('markSubject').value;
+  const code = document.getElementById('markCode').value.trim().toUpperCase();
+  const err  = document.getElementById('markErr');
   const succ = document.getElementById('markSucc');
   err.style.display = 'none'; succ.style.display = 'none';
-  if (!code || code.length !== 6) { err.textContent = 'Enter a valid 6-digit code.'; err.style.display = 'block'; return; }
-  try {
-    const res = await fetch(`${API}/student/mark-attendance`, { method: 'POST',
-      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
-      body: JSON.stringify({ subject_id: subjectId, code }) });
-    const data = await res.json();
-    if (res.ok) { succ.textContent = '✓ Attendance marked successfully!'; succ.style.display = 'block'; document.getElementById('markCode').value = ''; loadStudentDashboard(); }
-    else { err.textContent = data.message || 'Invalid or expired code.'; err.style.display = 'block'; }
-  } catch(e) { err.textContent = 'Server error.'; err.style.display = 'block'; }
+
+  const res  = await fetch('/student/mark-attendance', { method:'POST', headers: authHeaders(), body: JSON.stringify({subject_id, code}) });
+  const data = await res.json();
+  if (res.ok) { succ.textContent = data.message; succ.style.display = 'block'; document.getElementById('markCode').value = ''; loadStudentDashboard(); toast('Attendance marked!'); }
+  else { err.textContent = data.message; err.style.display = 'block'; }
 }
 
 // ========== TEACHER ==========
 async function loadTeacherDashboard() {
-  try {
-    const res = await fetch(`${API}/teacher/dashboard`, { headers: {'X-User-Email': currentUser.email} });
-    const data = await res.json();
-    document.getElementById('teacherStats').innerHTML = `
-      <div class="stat-card"><div class="stat-val blue">${data.total_subjects || 0}</div><div class="stat-label">Subjects</div></div>
-      <div class="stat-card"><div class="stat-val green">${data.total_students || 0}</div><div class="stat-label">Students</div></div>
-      <div class="stat-card"><div class="stat-val">${data.total_sessions || 0}</div><div class="stat-label">Sessions</div></div>
-      <div class="stat-card"><div class="stat-val yellow">${data.today_sessions || 0}</div><div class="stat-label">Today</div></div>
-    `;
-    if (data.recent_sessions && data.recent_sessions.length) {
-      document.getElementById('teacherSessionsTable').innerHTML = data.recent_sessions.map(s =>
-        `<tr><td><span class="subj-tag">${s.subject}</span></td><td>${s.date}</td><td>${s.count}</td><td style="font-family:var(--font-mono)">${s.code}</td></tr>`
-      ).join('');
-    }
-    // Populate subject dropdowns
-    const subjects = data.subjects || [];
-    ['codeSubject','filterSubject'].forEach(id => {
-      document.getElementById(id).innerHTML = `<option value="">All Subjects</option>` + subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    });
-    loadTeacherSubjects(subjects);
-  } catch(e) { toast('Failed to load dashboard', 'error'); }
+  const res  = await fetch('/teacher/dashboard', { headers: authHeaders() });
+  const data = await res.json();
+  const subjects = data.subjects || [];
+
+  document.getElementById('teacherStats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${data.total_subjects}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val green">${data.total_students}</div><div class="stat-label">Students Reached</div></div>
+    <div class="stat-card"><div class="stat-val blue">${data.total_sessions}</div><div class="stat-label">Total Sessions</div></div>
+    <div class="stat-card"><div class="stat-val yellow">${data.today_sessions}</div><div class="stat-label">Today's Sessions</div></div>
+  `;
+
+  const tbody = document.getElementById('teacherSessionsTable');
+  const sessions = data.recent_sessions || [];
+  tbody.innerHTML = sessions.length ? sessions.map(s => `<tr>
+    <td>${s.subject}</td><td>${s.date}</td><td>${s.count}</td>
+    <td><span style="font-family:var(--font-mono);font-size:13px;color:var(--accent)">${s.code}</span></td>
+  </tr>`).join('') : '<tr><td colspan="4"><div class="empty"><div class="e-icon">📭</div>No sessions yet</div></td></tr>';
+
+  const cSel = document.getElementById('codeSubject');
+  const fSel = document.getElementById('filterSubject');
+  const opts = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  cSel.innerHTML = opts;
+  fSel.innerHTML = '<option value="">All Subjects</option>' + opts;
+
+  const subList = document.getElementById('teacherSubjectList');
+  subList.innerHTML = subjects.length ? subjects.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div><strong>${s.name}</strong><span style="margin-left:12px;font-size:12px;color:var(--muted)">${s.student_count} students · ${s.session_count} sessions</span></div>
+      <button class="btn btn-outline btn-sm" onclick="deleteSubject(${s.id})" style="border-color:var(--red);color:var(--red)">Remove</button>
+    </div>
+  `).join('') : '<div class="empty"><div class="e-icon">📚</div>No subjects yet. Add one above.</div>';
 }
 
-function loadTeacherSubjects(subjects) {
-  const el = document.getElementById('teacherSubjectList');
-  if (!subjects || !subjects.length) { el.innerHTML = '<div class="empty"><div class="e-icon">📚</div>No subjects yet. Add one above!</div>'; return; }
-  el.innerHTML = `<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>
-    ${subjects.map(s => `<tr>
-      <td><span class="subj-tag">${s.name}</span></td>
-      <td>${s.student_count || 0}</td>
-      <td>${s.session_count || 0}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="deleteSubject(${s.id})">Remove</button></td>
-    </tr>`).join('')}
-  </tbody></table>`;
+async function generateCode() {
+  const subject_id = document.getElementById('codeSubject').value;
+  if (!subject_id) { toast('Select a subject first', 'error'); return; }
+  const res  = await fetch('/teacher/generate-code', { method:'POST', headers: authHeaders(), body: JSON.stringify({subject_id}) });
+  const data = await res.json();
+  if (!res.ok) { toast(data.message, 'error'); return; }
+
+  document.getElementById('codeDisplay').style.display = 'block';
+  document.getElementById('liveCode').textContent = data.code;
+  let secs = data.expires_in || 120;
+  document.getElementById('timerCount').textContent = secs;
+  document.getElementById('timerBar').style.width = '100%';
+  if (codeTimer) clearInterval(codeTimer);
+  codeTimer = setInterval(() => {
+    secs--;
+    document.getElementById('timerCount').textContent = secs;
+    document.getElementById('timerBar').style.width = (secs / (data.expires_in || 120) * 100) + '%';
+    if (secs <= 0) { clearInterval(codeTimer); document.getElementById('liveCode').textContent = 'EXPIRED'; }
+  }, 1000);
+  toast('Code generated!');
 }
 
 async function addSubject() {
   const name = document.getElementById('newSubjectName').value.trim();
-  if (!name) { toast('Enter a subject name', 'error'); return; }
-  try {
-    const res = await fetch(`${API}/teacher/subjects`, { method: 'POST',
-      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
-      body: JSON.stringify({ name }) });
-    const data = await res.json();
-    if (res.ok) { toast('Subject added!'); document.getElementById('newSubjectName').value = ''; loadTeacherDashboard(); }
-    else toast(data.message || 'Failed', 'error');
-  } catch(e) { toast('Server error', 'error'); }
+  if (!name) return;
+  const res = await fetch('/teacher/subjects', { method:'POST', headers: authHeaders(), body: JSON.stringify({name}) });
+  if (res.ok) { document.getElementById('newSubjectName').value = ''; loadTeacherDashboard(); toast('Subject added!'); }
 }
 
 async function deleteSubject(id) {
   if (!confirm('Remove this subject?')) return;
-  try {
-    const res = await fetch(`${API}/teacher/subjects/${id}`, { method: 'DELETE', headers: {'X-User-Email': currentUser.email} });
-    if (res.ok) { toast('Subject removed'); loadTeacherDashboard(); }
-  } catch(e) { toast('Server error', 'error'); }
-}
-
-async function generateCode() {
-  const subjectId = document.getElementById('codeSubject').value;
-  if (!subjectId) { toast('Select a subject first', 'error'); return; }
-  try {
-    const res = await fetch(`${API}/teacher/generate-code`, { method: 'POST',
-      headers: {'Content-Type':'application/json','X-User-Email': currentUser.email},
-      body: JSON.stringify({ subject_id: subjectId }) });
-    const data = await res.json();
-    if (res.ok) {
-      document.getElementById('liveCode').textContent = data.code;
-      document.getElementById('codeDisplay').style.display = 'block';
-      startCodeTimer(120);
-    } else toast(data.message || 'Failed', 'error');
-  } catch(e) { toast('Server error', 'error'); }
-}
-
-function startCodeTimer(seconds) {
-  if (codeTimer) clearInterval(codeTimer);
-  let remaining = seconds;
-  const bar = document.getElementById('timerBar');
-  const count = document.getElementById('timerCount');
-  codeTimer = setInterval(() => {
-    remaining--;
-    count.textContent = remaining;
-    bar.style.width = (remaining / seconds * 100) + '%';
-    if (remaining <= 30) bar.style.background = 'var(--red)';
-    else if (remaining <= 60) bar.style.background = 'var(--yellow)';
-    if (remaining <= 0) {
-      clearInterval(codeTimer);
-      document.getElementById('liveCode').textContent = '------';
-      document.getElementById('codeDisplay').style.display = 'none';
-      toast('Code expired. Generate a new one.', 'error');
-    }
-  }, 1000);
+  const res = await fetch(`/teacher/subjects/${id}`, { method:'DELETE', headers: authHeaders() });
+  if (res.ok) { loadTeacherDashboard(); toast('Subject removed.'); }
 }
 
 async function loadTeacherAttendance() {
-  const subjectId = document.getElementById('filterSubject').value;
-  try {
-    const url = subjectId ? `${API}/teacher/attendance?subject_id=${subjectId}` : `${API}/teacher/attendance`;
-    const res = await fetch(url, { headers: {'X-User-Email': currentUser.email} });
-    const data = await res.json();
-    if (data.records && data.records.length) {
-      document.getElementById('teacherAttTable').innerHTML = data.records.map(r => {
-        const pct = r.total > 0 ? Math.round(r.present / r.total * 100) : 0;
-        return `<tr>
-          <td>${r.student_name}</td>
-          <td><span class="subj-tag">${r.subject}</span></td>
-          <td>${r.present}</td><td>${r.total}</td>
-          <td style="font-family:var(--font-mono);font-weight:700;color:${pct>=75?'var(--green)':pct>=60?'var(--yellow)':'var(--red)'}">${pct}%</td>
-        </tr>`;
-      }).join('');
-    } else {
-      document.getElementById('teacherAttTable').innerHTML = '<tr><td colspan="5"><div class="empty"><div class="e-icon">📊</div>No records found</div></td></tr>';
-    }
-  } catch(e) { toast('Failed to load attendance', 'error'); }
+  const subject_id = document.getElementById('filterSubject').value;
+  const url = subject_id ? `/teacher/attendance?subject_id=${subject_id}` : '/teacher/attendance';
+  const res  = await fetch(url, { headers: authHeaders() });
+  const data = await res.json();
+  const tbody = document.getElementById('teacherAttTable');
+  const rows  = data.records || [];
+  tbody.innerHTML = rows.length ? rows.map(r => {
+    const pct = r.total > 0 ? Math.round(r.present / r.total * 100) : 0;
+    return `<tr>
+      <td>${r.student_name}</td><td>${r.subject}</td><td>${r.present}</td><td>${r.total}</td>
+      <td><span class="badge ${pct>=75?'badge-green':pct>=60?'badge-yellow':'badge-red'}">${pct}%</span></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5"><div class="empty"><div class="e-icon">📊</div>No records found</div></td></tr>';
 }
 
 // ========== ADMIN ==========
 async function loadAdminDashboard() {
-  try {
-    const res = await fetch(`${API}/admin/dashboard`, { headers: {'X-User-Email': currentUser.email} });
-    const data = await res.json();
-    document.getElementById('adminStats').innerHTML = `
-      <div class="stat-card"><div class="stat-val blue">${data.total_students || 0}</div><div class="stat-label">Students</div></div>
-      <div class="stat-card"><div class="stat-val green">${data.total_teachers || 0}</div><div class="stat-label">Teachers</div></div>
-      <div class="stat-card"><div class="stat-val yellow">${data.total_subjects || 0}</div><div class="stat-label">Subjects</div></div>
-      <div class="stat-card"><div class="stat-val">${data.total_records || 0}</div><div class="stat-label">Attendance Records</div></div>
-    `;
-    // Recent users
-    document.getElementById('adminRecentUsers').innerHTML = data.recent_users && data.recent_users.length ?
-      data.recent_users.map(u => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
-        <div><strong>${u.name}</strong><div style="color:var(--muted);font-size:11px">${u.email}</div></div>
-        <span class="badge ${u.type==='student'?'badge-green':u.type==='teacher'?'badge-yellow':'badge-red'}">${u.type}</span>
-      </div>`).join('') : '<div class="empty"><div class="e-icon">👤</div>No users yet</div>';
+  const res  = await fetch('/admin/dashboard', { headers: authHeaders() });
+  const data = await res.json();
 
-    // Active sessions
-    document.getElementById('adminActiveSessions').innerHTML = data.active_sessions && data.active_sessions.length ?
-      data.active_sessions.map(s => `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px">
-        <div><strong>${s.subject}</strong><div style="color:var(--muted);font-size:11px">${s.teacher}</div></div>
-        <span class="badge badge-green">Active</span>
-      </div>`).join('') : '<div class="empty"><div class="e-icon">🟢</div>No active sessions</div>';
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${data.total_students}</div><div class="stat-label">Students</div></div>
+    <div class="stat-card"><div class="stat-val blue">${data.total_teachers}</div><div class="stat-label">Teachers</div></div>
+    <div class="stat-card"><div class="stat-val yellow">${data.total_subjects}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val green">${data.total_records}</div><div class="stat-label">Attendance Records</div></div>
+  `;
 
-    // Load tables
-    loadAdminStudents(data.students);
-    loadAdminTeachers(data.teachers);
-    loadAdminAttendance(data.attendance);
-  } catch(e) { toast('Failed to load admin dashboard', 'error'); }
-}
+  const recentEl = document.getElementById('adminRecentUsers');
+  recentEl.innerHTML = (data.recent_users||[]).map(u => `
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div><strong>${u.name}</strong><span style="margin-left:8px;font-size:11px;color:var(--muted)">${u.type}</span></div>
+      <span style="font-size:12px;color:var(--muted)">${u.joined}</span>
+    </div>
+  `).join('') || '<div class="empty">No users yet</div>';
 
-function loadAdminStudents(students) {
-  document.getElementById('adminStudentTable').innerHTML = students && students.length ?
-    students.map(s => `<tr>
-      <td><strong>${s.name}</strong></td>
-      <td style="color:var(--muted);font-size:12px">${s.email}</td>
-      <td>${s.joined}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${s.id})">Remove</button></td>
-    </tr>`).join('') : '<tr><td colspan="4"><div class="empty"><div class="e-icon">👥</div>No students found</div></td></tr>';
-}
+  const sessEl = document.getElementById('adminActiveSessions');
+  sessEl.innerHTML = (data.active_sessions||[]).length
+    ? data.active_sessions.map(s => `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><strong>${s.subject}</strong><span style="margin-left:8px;font-size:12px;color:var(--muted)">by ${s.teacher}</span></div>`).join('')
+    : '<div class="empty">No active sessions</div>';
 
-function loadAdminTeachers(teachers) {
-  document.getElementById('adminTeacherTable').innerHTML = teachers && teachers.length ?
-    teachers.map(t => `<tr>
-      <td><strong>${t.name}</strong></td>
-      <td style="color:var(--muted);font-size:12px">${t.email}</td>
-      <td>${t.subjects || '—'}</td>
-      <td>${t.joined}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${t.id})">Remove</button></td>
-    </tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="e-icon">👨‍🏫</div>No teachers found</div></td></tr>';
-}
+  const sTbody = document.getElementById('adminStudentTable');
+  sTbody.innerHTML = (data.students||[]).map(s => `<tr>
+    <td>${s.name}</td><td>${s.email}</td><td>${s.joined}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${s.id})" style="border-color:var(--red);color:var(--red)">Remove</button></td>
+  </tr>`).join('') || '<tr><td colspan="4"><div class="empty">No students</div></td></tr>';
 
-function loadAdminAttendance(records) {
-  document.getElementById('adminAttTable').innerHTML = records && records.length ?
-    records.map(r => `<tr>
-      <td>${r.student_name}</td>
-      <td><span class="subj-tag">${r.subject}</span></td>
-      <td>${r.teacher}</td>
-      <td style="font-size:12px;color:var(--muted)">${r.date}</td>
-      <td><span class="badge badge-green">Present</span></td>
-    </tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="e-icon">📋</div>No records found</div></td></tr>';
+  const tTbody = document.getElementById('adminTeacherTable');
+  tTbody.innerHTML = (data.teachers||[]).map(t => `<tr>
+    <td>${t.name}</td><td>${t.email}</td><td>${t.subjects||'—'}</td><td>${t.joined}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="adminDeleteUser(${t.id})" style="border-color:var(--red);color:var(--red)">Remove</button></td>
+  </tr>`).join('') || '<tr><td colspan="5"><div class="empty">No teachers</div></td></tr>';
+
+  const aTbody = document.getElementById('adminAttTable');
+  aTbody.innerHTML = (data.attendance||[]).map(a => `<tr>
+    <td>${a.student_name}</td><td>${a.subject}</td><td>${a.teacher}</td><td>${a.date}</td>
+    <td><span class="badge badge-green">Present</span></td>
+  </tr>`).join('') || '<tr><td colspan="5"><div class="empty">No records</div></td></tr>';
 }
 
 async function adminDeleteUser(id) {
-  if (!confirm('Remove this user? This cannot be undone.')) return;
-  try {
-    const res = await fetch(`${API}/admin/users/${id}`, { method: 'DELETE', headers: {'X-User-Email': currentUser.email} });
-    if (res.ok) { toast('User removed'); loadAdminDashboard(); }
-    else toast('Failed to remove user', 'error');
-  } catch(e) { toast('Server error', 'error'); }
+  if (!confirm('Remove this user and all their data?')) return;
+  const res = await fetch(`/admin/users/${id}`, { method:'DELETE', headers: authHeaders() });
+  if (res.ok) { loadAdminDashboard(); toast('User removed.'); }
 }
 
-// ========== PWA ==========
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-}
+// ========== AUTO LOGIN ==========
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('smartattend_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      initDashboard();
+    } catch(e) {
+      localStorage.removeItem('smartattend_user');
+    }
+  }
+});
 </script>
 </body>
 </html>

@@ -1,500 +1,220 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>SmartAttend</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    /* ── TOKENS ───────────────────────────────────────── */
-    :root {
-      --bg:#09090f; --bg2:#0f0f18; --card:#13131e; --card2:#1a1a28;
-      --border:#252535; --border2:#303048;
-      --accent:#e04c2f; --accent2:#ff6b4a; --accentl:rgba(224,76,47,.12);
-      --green:#22c55e; --greenl:rgba(34,197,94,.12);
-      --yellow:#eab308; --yellowl:rgba(234,179,8,.12);
-      --red:#ef4444; --redl:rgba(239,68,68,.12);
-      --blue:#3b82f6; --bluel:rgba(59,130,246,.12);
-      --purple:#a855f7; --purplel:rgba(168,85,247,.12);
-      --text:#f1f1f8; --text2:#a0a0b8; --text3:#606078;
-      --fh:'Cabinet Grotesk',sans-serif; --fm:'DM Mono',monospace;
-      --r:10px; --r2:16px; --shadow:0 4px 24px rgba(0,0,0,.4);
-    }
-    [data-theme="light"] {
-      --bg:#f4f4f8; --bg2:#eaeaf0; --card:#ffffff; --card2:#f8f8fc;
-      --border:#e0e0ec; --border2:#d0d0e0;
-      --text:#1a1a2e; --text2:#505068; --text3:#9090a8;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth}
-    body{font-family:var(--fh);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .3s,color .3s}
-    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
-
-    /* ── NAV ─────────────────────────────────────────── */
-    nav{display:flex;justify-content:space-between;align-items:center;padding:16px 40px;background:rgba(9,9,15,.9);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;backdrop-filter:blur(12px)}
-    [data-theme="light"] nav{background:rgba(244,244,248,.9)}
-    .nav-logo{font-size:20px;font-weight:900;letter-spacing:-1px;cursor:pointer}
-    .nav-logo span{color:var(--accent)}
-    .nav-logo .dot{width:6px;height:6px;background:var(--green);border-radius:50%;display:inline-block;margin-left:3px;animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-    .nav-right{display:flex;align-items:center;gap:10px}
-    .theme-toggle{background:var(--card);border:1px solid var(--border);color:var(--text2);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
-    .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
-    #userChip{display:none;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:13px;color:var(--text2)}
-    #userChip strong{color:var(--text)}
-
-    /* ── BUTTONS ─────────────────────────────────────── */
-    .btn{padding:9px 20px;border-radius:8px;font-family:var(--fh);font-weight:700;font-size:13px;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
-    .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(224,76,47,.35)}
-    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
-    .btn-green{background:var(--green);color:#fff}.btn-green:hover{opacity:.85}
-    .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{opacity:.85}
-    .btn-ghost{background:transparent;border:none;color:var(--text3);padding:6px 10px}.btn-ghost:hover{color:var(--text)}
-    .btn-sm{padding:5px 12px;font-size:12px}
-    .btn-full{width:100%;justify-content:center;padding:13px}
-    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
-
-    /* ── HERO ─────────────────────────────────────────── */
-    #homePage{min-height:calc(100vh - 65px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 24px;background:radial-gradient(ellipse at 50% -10%,rgba(224,76,47,.15) 0%,transparent 65%);position:relative;overflow:hidden}
-    .hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:60px 60px;opacity:.3;pointer-events:none!important;z-index:0}
-    .hero-tag,.hero-title,.hero-sub,.hero-ctas,.features{position:relative;z-index:2}
-    .hero-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--fm);font-size:11px;letter-spacing:2px;color:var(--accent);border:1px solid var(--accentl);padding:5px 14px;border-radius:20px;margin-bottom:24px;text-transform:uppercase;background:var(--accentl)}
-    .hero-title{font-size:clamp(40px,8vw,88px);font-weight:900;line-height:1.0;letter-spacing:-3px;margin-bottom:20px;position:relative}
-    .hero-title .line2{color:var(--accent)}
-    .hero-sub{font-size:16px;color:var(--text2);max-width:500px;line-height:1.75;margin-bottom:36px;font-weight:500}
-    .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:60px}
-    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:860px;width:100%}
-    .feature-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;text-align:left;transition:all .25s;cursor:default}
-    .feature-card:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 8px 32px rgba(224,76,47,.15)}
-    .f-icon{font-size:26px;margin-bottom:12px}
-    .feature-card h3{font-size:14px;font-weight:700;margin-bottom:6px}
-    .feature-card p{font-size:12px;color:var(--text2);line-height:1.6}
-
-    /* ── DASHBOARD ────────────────────────────────────── */
-    #dashboard{display:none;padding:28px 40px;max-width:1160px;margin:0 auto}
-    .dash-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:14px}
-    .dash-title{font-size:24px;font-weight:900;letter-spacing:-.5px}
-    .dash-title span{color:var(--accent)}
-    .dash-sub{font-size:13px;color:var(--text3);margin-top:3px}
-    .role-pill{font-family:var(--fm);font-size:10px;letter-spacing:2px;padding:4px 12px;border-radius:20px;text-transform:uppercase;background:var(--accentl);color:var(--accent);border:1px solid var(--accentl)}
-    .role-pill.teacher{background:var(--bluel);color:var(--blue);border-color:var(--bluel)}
-    .role-pill.admin{background:var(--purplel);color:var(--purple);border-color:var(--purplel)}
-
-    /* ── STATS ────────────────────────────────────────── */
-    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px}
-    .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:18px;position:relative;overflow:hidden}
-    .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
-    .stat.green::before{background:var(--green)}
-    .stat.blue::before{background:var(--blue)}
-    .stat.yellow::before{background:var(--yellow)}
-    .stat.purple::before{background:var(--purple)}
-    .stat-val{font-family:var(--fm);font-size:28px;font-weight:500;color:var(--text)}
-    .stat-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
-    .stat-icon{position:absolute;right:16px;top:16px;font-size:20px;opacity:.3}
-
-    /* ── CARDS ────────────────────────────────────────── */
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:22px;margin-bottom:18px}
-    .card-title{font-size:14px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--text)}
-    .card-title .ct-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
-    .card-title .ct-actions{margin-left:auto;display:flex;gap:8px}
-
-    /* ── TABS ─────────────────────────────────────────── */
-    .dash-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;padding:4px;background:var(--card);border-radius:10px;border:1px solid var(--border);width:fit-content}
-    .dtab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:var(--fh);transition:all .2s}
-    .dtab.active{background:var(--accent);color:#fff}
-    .dtab:hover:not(.active){color:var(--text)}
-    .dsec{display:none}.dsec.active{display:block}
-
-    /* ── TABLE ────────────────────────────────────────── */
-    .tbl-wrap{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{text-align:left;padding:9px 14px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);font-family:var(--fm);white-space:nowrap}
-    td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
-    [data-theme="light"] td{border-bottom:1px solid var(--border)}
-    tr:last-child td{border-bottom:none}
-    tr:hover td{background:rgba(255,255,255,.02)}
-    [data-theme="light"] tr:hover td{background:rgba(0,0,0,.02)}
-
-    /* ── BADGES ───────────────────────────────────────── */
-    .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--fm);gap:4px}
-    .bg{background:var(--greenl);color:var(--green)}
-    .br{background:var(--redl);color:var(--red)}
-    .by{background:var(--yellowl);color:var(--yellow)}
-    .bb{background:var(--bluel);color:var(--blue)}
-    .bp{background:var(--purplel);color:var(--purple)}
-
-    /* ── ATT BAR ──────────────────────────────────────── */
-    .att-bar-w{background:var(--border);border-radius:4px;height:5px;margin-top:5px;overflow:hidden}
-    .att-bar{height:100%;border-radius:4px;transition:width .6s ease}
-
-    /* ── SKELETON ─────────────────────────────────────── */
-    .skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
-    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .sk-row{height:14px;margin-bottom:10px}
-    .sk-row:last-child{width:60%}
-
-    /* ── FORM ─────────────────────────────────────────── */
-    .fg{margin-bottom:14px}
-    .fg label{display:block;font-size:11px;font-family:var(--fm);letter-spacing:1px;color:var(--text3);margin-bottom:5px;text-transform:uppercase}
-    .fg input,.fg select,.fg textarea{width:100%;padding:10px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;transition:border-color .2s;outline:none}
-    .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
-    .fg select option{background:var(--bg2)}
-    .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .err{color:var(--red);font-size:11px;font-family:var(--fm);margin-top:-6px;margin-bottom:8px;display:none}
-    .succ{color:var(--green);font-size:11px;font-family:var(--fm);margin-bottom:8px;display:none}
-
-    /* ── MODAL ────────────────────────────────────────── */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(6px);padding:20px}
-    .modal.open{display:flex}
-    .mbox{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);width:100%;max-width:440px;padding:32px;position:relative;animation:popIn .22s ease}
-    @keyframes popIn{from{transform:scale(.92) translateY(12px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-    .mclose{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center}
-    .mclose:hover{background:var(--card2);color:var(--text)}
-    .mtabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:22px}
-    .mtab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--fh)}
-    .mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
-    .tcont{display:none}.tcont.active{display:block}
-    .mh2{font-size:22px;font-weight:900;margin-bottom:4px;letter-spacing:-.5px}
-    .msub{font-size:13px;color:var(--text3);margin-bottom:20px}
-
-    /* ── OTP INPUT ────────────────────────────────────── */
-    .otp-row{display:flex;gap:8px;justify-content:center;margin:16px 0}
-    .otp-d{width:46px;height:52px;text-align:center;font-size:22px;font-family:var(--fm);font-weight:500;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;transition:border-color .2s}
-    .otp-d:focus{border-color:var(--accent)}
-
-    /* ── CODE DISPLAY ─────────────────────────────────── */
-    .code-box{background:var(--bg2);border:2px solid var(--accent);border-radius:var(--r2);padding:28px;text-align:center;margin:18px 0}
-    .code-num{font-family:var(--fm);font-size:50px;font-weight:500;letter-spacing:12px;color:var(--accent)}
-    .code-timer-txt{font-family:var(--fm);font-size:13px;color:var(--text3);margin-top:10px}
-    .code-timer-txt span{color:var(--yellow);font-size:17px}
-    .timer-bar-w{background:var(--border);border-radius:4px;height:3px;margin-top:10px;overflow:hidden}
-    .timer-bar{height:100%;border-radius:4px;background:var(--accent);transition:width 1s linear}
-
-    /* ── QR ───────────────────────────────────────────── */
-    #qrContainer{display:flex;justify-content:center;margin-top:14px}
-    #qrContainer canvas,#qrContainer img{border-radius:10px;border:3px solid var(--accent);padding:8px;background:#fff}
-    .qr-scan-area{background:var(--bg2);border:2px dashed var(--border);border-radius:var(--r2);padding:20px;text-align:center;margin-bottom:16px;position:relative;overflow:hidden}
-    #scanVideo{width:100%;border-radius:8px;max-height:220px;object-fit:cover}
-    .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .scan-frame{width:150px;height:150px;border:2px solid var(--accent);border-radius:8px;position:relative}
-    .scan-frame::before,.scan-frame::after{content:'';position:absolute;width:20px;height:20px;border-color:var(--accent);border-style:solid}
-    .scan-frame::before{top:-2px;left:-2px;border-width:3px 0 0 3px}
-    .scan-frame::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0}
-    .scan-line{position:absolute;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanAnim 2s linear infinite}
-    @keyframes scanAnim{0%{top:0}100%{top:100%}}
-
-    /* ── FACE ─────────────────────────────────────────── */
-    #faceVideo{width:100%;border-radius:10px;border:2px solid var(--border);max-height:200px;object-fit:cover}
-    .face-status{text-align:center;font-family:var(--fm);font-size:12px;color:var(--text3);margin-top:8px}
-
-    /* ── D3 CHARTS ────────────────────────────────────── */
-    .chart-wrap{width:100%;overflow:hidden}
-    .chart-wrap svg{width:100%;font-family:var(--fh)}
-    .d3-bar rect{transition:opacity .2s}
-    .d3-bar rect:hover{opacity:.7}
-    .d3-tooltip{position:absolute;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;font-family:var(--fm);pointer-events:none;box-shadow:var(--shadow)}
-
-    /* ── ATT % RING ───────────────────────────────────── */
-    .ring-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-    .ring-item{text-align:center}
-    .ring-label{font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--fm)}
-
-    /* ── GEO ──────────────────────────────────────────── */
-    .geo-toggle{display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);margin-bottom:14px;cursor:pointer}
-    .geo-toggle input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
-
-    /* ── TOAST ────────────────────────────────────────── */
-    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card2);border:1px solid var(--border);padding:11px 22px;border-radius:30px;font-size:13px;z-index:9999;transition:transform .3s ease;white-space:nowrap;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px}
-    #toast.show{transform:translateX(-50%) translateY(0)}
-    #toast.ok{border-color:var(--green);color:var(--green)}
-    #toast.err{border-color:var(--red);color:var(--red)}
-    #toast.warn{border-color:var(--yellow);color:var(--yellow)}
-
-    /* ── INSTALL PROMPT ───────────────────────────────── */
-    #installBanner{display:none;position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--accent);border-radius:var(--r2);padding:16px 20px;z-index:9998;box-shadow:var(--shadow);max-width:280px;animation:popIn .3s ease}
-    #installBanner h4{font-size:14px;font-weight:700;margin-bottom:4px}
-    #installBanner p{font-size:12px;color:var(--text3);margin-bottom:12px}
-    #installBanner .ib-btns{display:flex;gap:8px}
-
-    /* ── LIVE INDICATOR ───────────────────────────────── */
-    .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block;margin-right:4px}
-    .ws-status{font-family:var(--fm);font-size:10px;letter-spacing:1px;color:var(--text3);display:flex;align-items:center;gap:4px}
-
-    /* ── SUBJ TAG ─────────────────────────────────────── */
-    .stag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-family:var(--fm);background:var(--bluel);color:var(--blue)}
-
-    /* ── EMPTY ────────────────────────────────────────── */
-    .empty{text-align:center;padding:36px;color:var(--text3);font-size:13px}
-    .empty .ei{font-size:32px;margin-bottom:8px}
-
-    /* ── GRID ─────────────────────────────────────────── */
-    .g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
-
-    /* ── INPUT SEARCH ─────────────────────────────────── */
-    .search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-    .search-bar input{flex:1;min-width:180px;padding:9px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:13px;outline:none}
-    .search-bar input:focus{border-color:var(--accent)}
-
-    /* ── RESPONSIVE ───────────────────────────────────── */
-    @media(max-width:700px){
-      nav{padding:14px 18px}
-      #dashboard{padding:18px}
-      .g2,.g3,.frow{grid-template-columns:1fr}
-      .hero-title{font-size:36px;letter-spacing:-1px}
-      .dash-tabs{width:100%}
-      .dtab{flex:1;text-align:center;font-size:12px;padding:6px 10px}
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SmartAttend</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--bg2:#111118;--card:#16161f;--border:#2a2a3a;--accent:#e04c2f;--accent2:#ff7c5c;--green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--blue:#3498db;--text:#f0f0f5;--muted:#888899;--fh:'Syne',sans-serif;--fm:'Space Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fh);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 40px;background:rgba(10,10,15,.95);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.nav-logo{font-size:22px;font-weight:800;letter-spacing:-1px}.nav-logo span{color:var(--accent)}
+.btn{padding:9px 22px;border-radius:6px;font-family:var(--fh);font-weight:700;font-size:14px;cursor:pointer;border:none;transition:all .2s}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-sm{padding:6px 14px;font-size:12px}.btn-full{width:100%;margin-top:6px;padding:12px;font-size:15px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+#homePage{min-height:calc(100vh - 65px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 20px;background:radial-gradient(ellipse at 50% 0%,rgba(224,76,47,.12) 0%,transparent 70%)}
+.hero-tag{display:inline-block;font-family:var(--fm);font-size:11px;letter-spacing:3px;color:var(--accent);border:1px solid var(--accent);padding:5px 14px;border-radius:20px;margin-bottom:28px;text-transform:uppercase}
+.hero-title{font-size:clamp(42px,8vw,80px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:20px}.hero-title span{color:var(--accent)}
+.hero-sub{font-size:17px;color:var(--muted);max-width:520px;line-height:1.7;margin-bottom:40px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;max-width:900px;margin:70px auto 0;width:100%}
+.feature-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;transition:all .2s}.feature-card:hover{border-color:var(--accent);transform:translateY(-3px)}
+.fi{font-size:28px;margin-bottom:12px}.feature-card h3{font-size:15px;font-weight:700;margin-bottom:8px}.feature-card p{font-size:13px;color:var(--muted);line-height:1.6}
+#dashboard{display:none;padding:30px 40px;max-width:1100px;margin:0 auto}
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:16px}
+.dash-header h2{font-size:26px;font-weight:800}.dash-header h2 span{color:var(--accent)}
+.role-badge{font-family:var(--fm);font-size:11px;letter-spacing:2px;padding:4px 12px;border-radius:20px;text-transform:uppercase;background:var(--accent);color:#fff}
+.role-badge.teacher{background:var(--blue)}.role-badge.admin{background:#9b59b6}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
+.stat-val{font-size:32px;font-weight:800;color:var(--accent);font-family:var(--fm)}.stat-val.green{color:var(--green)}.stat-val.yellow{color:var(--yellow)}.stat-val.blue{color:var(--blue)}
+.stat-label{font-size:12px;color:var(--muted);margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.card h3{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.cdot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:10px 14px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:var(--fm)}
+td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--fm)}
+.bg{background:rgba(46,204,113,.15);color:var(--green)}.br{background:rgba(231,76,60,.15);color:var(--red)}.by{background:rgba(241,196,15,.15);color:var(--yellow)}
+.att-bar-wrap{margin-top:6px;background:var(--border);border-radius:4px;height:6px}.att-bar{height:6px;border-radius:4px;transition:width .5s}
+.code-display{background:var(--bg);border:2px solid var(--accent);border-radius:12px;padding:28px;text-align:center;margin-bottom:20px}
+.code-num{font-family:var(--fm);font-size:52px;font-weight:700;letter-spacing:10px;color:var(--accent)}
+.code-timer{font-family:var(--fm);font-size:14px;color:var(--muted);margin-top:10px}.code-timer span{color:var(--yellow);font-size:18px}
+.timer-bar-wrap{background:var(--border);border-radius:4px;height:4px;margin-top:12px}.timer-bar{height:4px;border-radius:4px;background:var(--accent);transition:width 1s linear}
+.fg{margin-bottom:16px}.fg label{display:block;font-size:12px;font-family:var(--fm);letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+.fg input,.fg select{width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;transition:border-color .2s;outline:none}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}.fg select option{background:var(--bg2)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.err{color:var(--red);font-size:12px;margin-bottom:10px;font-family:var(--fm);display:none}.succ{color:var(--green);font-size:12px;margin-bottom:10px;font-family:var(--fm);display:none}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
+.modal.active{display:flex}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:420px;padding:32px;position:relative;animation:popIn .2s ease}
+@keyframes popIn{from{transform:scale(.93) translateY(10px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.mbox h2{font-size:22px;font-weight:800;margin-bottom:6px}.msub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.mclose{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer}.mclose:hover{color:var(--text)}
+.mtabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.mtab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--fh)}
+.mtab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tc{display:none}.tc.active{display:block}
+.otp-row{display:flex;gap:10px;justify-content:center;margin:16px 0}
+.otp-d{width:48px;height:52px;text-align:center;font-size:22px;font-family:var(--fm);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none}
+.otp-d:focus{border-color:var(--accent)}
+.stag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-family:var(--fm);background:rgba(52,152,219,.15);color:var(--blue)}
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--card);border:1px solid var(--border);padding:12px 24px;border-radius:30px;font-size:14px;z-index:9999;transition:transform .3s ease;white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#toast.show{transform:translateX(-50%) translateY(0)}#toast.ok{border-color:var(--green);color:var(--green)}#toast.err{border-color:var(--red);color:var(--red)}
+.dtabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+.dtab{padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-family:var(--fh);transition:all .2s}
+.dtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}.dtab:hover:not(.active){border-color:var(--accent);color:var(--accent)}
+.dsec{display:none}.dsec.active{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:14px}.ei{font-size:36px;margin-bottom:10px}
+#userInfo{display:none;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+#logoutBtn{display:none}
+@media(max-width:680px){nav{padding:14px 20px}#dashboard{padding:20px}.frow,.g2{grid-template-columns:1fr}.hero-title{font-size:36px}}
+</style>
 </head>
 <body>
-
-<!-- NAV -->
 <nav>
-  <div class="nav-logo" onclick="goHome()">Smart<span>Attend</span><span class="dot"></span></div>
-  <div class="nav-right">
-    <div class="ws-status" id="wsStatus"><span style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block"></span> offline</div>
-    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-    <div id="userChip">
-      Welcome, <strong id="navName">—</strong>
-      <span class="role-pill" id="navRole">—</span>
+  <div class="nav-logo">Smart<span>Attend</span></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="userInfo">Welcome, <strong id="navName">—</strong></div>
+    <div style="display:flex;gap:8px" id="authBtns">
+      <button class="btn btn-outline" onclick="openModal('login')">Login</button>
+      <button class="btn btn-primary" onclick="openModal('register')">Register</button>
     </div>
-    <div id="authBtns" style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="openAuth('login')">Sign In</button>
-      <button class="btn btn-primary" onclick="openAuth('register')">Get Started</button>
-    </div>
-    <button class="btn btn-outline btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Sign Out</button>
+    <button class="btn btn-outline btn-sm" id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 </nav>
 
-<!-- HOME PAGE -->
 <div id="homePage">
-  <div class="hero-grid"></div>
   <div class="hero-tag">✦ Attendance Reinvented</div>
-  <h1 class="hero-title">Attendance that<br><span class="line2">actually works.</span></h1>
-  <p class="hero-sub">Real-time code + QR attendance for students, teachers & admins. Geo-locked. Anti-proxy. Beautiful.</p>
+  <h1 class="hero-title">Attendance that<br>actually <span>works</span></h1>
+  <p class="hero-sub">Real-time code-based attendance for students, teachers, and admins. Secure. Fast. Built for modern classrooms.</p>
   <div class="hero-ctas">
-    <button class="btn btn-primary" onclick="openAuth('register')" style="padding:12px 28px;font-size:15px">Get Started Free →</button>
-    <button class="btn btn-outline" onclick="openAuth('login')" style="padding:12px 28px;font-size:15px">Sign In</button>
+    <button class="btn btn-primary" onclick="openModal('register')" style="padding:12px 28px;font-size:15px">Get Started Free</button>
+    <button class="btn btn-outline" onclick="openModal('login')" style="padding:12px 28px;font-size:15px">Sign In</button>
   </div>
   <div class="features">
-    <div class="feature-card"><div class="f-icon">⏱️</div><h3>2-Min Codes + QR</h3><p>Auto-expiring codes & scannable QR — no proxy attendance possible.</p></div>
-    <div class="feature-card"><div class="f-icon">📍</div><h3>Geo-Location Lock</h3><p>Teacher sets classroom radius. Students must be physically present.</p></div>
-    <div class="feature-card"><div class="f-icon">📊</div><h3>D3.js Analytics</h3><p>Beautiful animated charts tracking trends weekly and monthly.</p></div>
-    <div class="feature-card"><div class="f-icon">🔐</div><h3>Face Recognition</h3><p>Login with your face — no passwords needed on trusted devices.</p></div>
-    <div class="feature-card"><div class="f-icon">⚡</div><h3>Live WebSockets</h3><p>Dashboard updates in real-time as students mark attendance.</p></div>
-    <div class="feature-card"><div class="f-icon">🛡️</div><h3>Anti-Proxy System</h3><p>IP tracking + location validation flags suspicious activity instantly.</p></div>
-    <div class="feature-card"><div class="f-icon">📧</div><h3>Smart Alerts</h3><p>Auto email when attendance drops below 75%. Stay informed.</p></div>
-    <div class="feature-card"><div class="f-icon">📄</div><h3>Export Reports</h3><p>Download CSV or get reports emailed directly to you.</p></div>
+    <div class="feature-card"><div class="fi">⏱️</div><h3>2-Minute Codes</h3><p>Teachers generate live codes that expire in 2 minutes — no proxy attendance possible.</p></div>
+    <div class="feature-card"><div class="fi">📊</div><h3>Per-Subject Tracking</h3><p>Track attendance separately for every subject with real-time percentage updates.</p></div>
+    <div class="feature-card"><div class="fi">🔐</div><h3>OTP Verified Login</h3><p>Every login is verified with a one-time password sent directly to your email.</p></div>
+    <div class="feature-card"><div class="fi">🛡️</div><h3>Admin Control</h3><p>Administrators can manage all students, teachers, and attendance records seamlessly.</p></div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="dash-header">
-    <div>
-      <div class="dash-title" id="dashTitle">Dashboard</div>
-      <div class="dash-sub" id="dashSub"></div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <span class="role-pill" id="rolePill">—</span>
-    </div>
+    <div><h2 id="dashTitle">Dashboard <span>—</span></h2><div style="margin-top:6px;font-size:13px;color:var(--muted)" id="dashSub"></div></div>
+    <span class="role-badge" id="roleBadge">Student</span>
   </div>
 
-  <!-- STUDENT DASH -->
+  <!-- STUDENT -->
   <div id="studentDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="sDT(event,'sOv')">Overview</button>
-      <button class="dtab" onclick="sDT(event,'sMark')">Mark Attendance</button>
-      <button class="dtab" onclick="sDT(event,'sSubj')">My Subjects</button>
-      <button class="dtab" onclick="sDT(event,'sCharts')">Analytics</button>
+    <div class="dtabs">
+      <button class="dtab active" onclick="dTab('sOv','studentDash',this)">Overview</button>
+      <button class="dtab" onclick="dTab('sMark','studentDash',this)">Mark Attendance</button>
+      <button class="dtab" onclick="dTab('sSubj','studentDash',this)">My Subjects</button>
     </div>
     <div id="sOv" class="dsec active">
-      <div class="stats-row" id="sStats"><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div><div class="skeleton sk-row" style="height:88px"></div></div>
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Attendance Summary</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Subject</th><th>Teacher</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead><tbody id="sAttTbl"><tr><td colspan="6"><div class="empty"><div class="ei">📭</div>Loading...</div></td></tr></tbody></table></div>
+      <div class="stats-row" id="sStats"></div>
+      <div class="card"><h3><span class="cdot"></span> Attendance Summary</h3>
+        <table><thead><tr><th>Subject</th><th>Present</th><th>Total</th><th>%</th><th>Status</th></tr></thead>
+        <tbody id="sAttTbl"><tr><td colspan="5"><div class="empty"><div class="ei">📭</div>Loading...</div></td></tr></tbody></table>
       </div>
     </div>
     <div id="sMark" class="dsec">
-      <div class="g2">
-        <!-- QR SCAN -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot"></span> Scan QR Code</div>
-          <div class="qr-scan-area">
-            <video id="scanVideo" autoplay playsinline muted style="display:none"></video>
-            <div id="scanPlaceholder" style="padding:30px 0;color:var(--text3)">
-              <div style="font-size:40px;margin-bottom:10px">📷</div>
-              <div style="font-size:13px">Camera will appear here</div>
-            </div>
-            <div class="scan-overlay" id="scanOverlay" style="display:none">
-              <div class="scan-frame"><div class="scan-line"></div></div>
-            </div>
-          </div>
-          <button class="btn btn-blue btn-full" id="startScanBtn" onclick="startQRScan()">📷 Start Camera Scan</button>
-          <button class="btn btn-ghost btn-full" id="stopScanBtn" onclick="stopQRScan()" style="display:none">✕ Stop Camera</button>
-          <div id="scanResult" style="margin-top:10px;font-family:var(--fm);font-size:12px;color:var(--green);text-align:center;display:none"></div>
-        </div>
-        <!-- MANUAL CODE -->
-        <div class="card">
-          <div class="card-title"><span class="ct-dot"></span> Enter Code Manually</div>
-          <div class="fg"><label>Subject</label><select id="markSubject"></select></div>
-          <div class="fg"><label>6-Digit Code</label><input id="markCode" maxlength="6" placeholder="XXXXXX" style="font-family:var(--fm);font-size:24px;letter-spacing:8px;text-align:center;text-transform:uppercase"></div>
-          <div class="err" id="markErr"></div>
-          <div class="succ" id="markSucc"></div>
-          <button class="btn btn-primary btn-full" onclick="markAttendance()">✓ Mark Present</button>
-        </div>
+      <div class="card" style="max-width:480px;margin:0 auto">
+        <h3><span class="cdot"></span> Mark Attendance</h3>
+        <div class="fg"><label>Subject</label><select id="markSubject"></select></div>
+        <div class="fg"><label>6-Digit Code</label><input id="markCode" maxlength="6" placeholder="XXXXXX" style="font-family:var(--fm);font-size:22px;letter-spacing:6px;text-align:center;text-transform:uppercase"></div>
+        <div class="err" id="markErr"></div><div class="succ" id="markSucc"></div>
+        <button class="btn btn-primary btn-full" onclick="markAttendance()">✓ Mark Present</button>
       </div>
     </div>
     <div id="sSubj" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Enrolled Subjects</div>
-        <div id="sSubjList"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></div>
-      </div>
-    </div>
-    <div id="sCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Weekly Attendance</div><div class="chart-wrap" id="sWeeklyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Monthly Trend</div><div class="chart-wrap" id="sMonthlyChart"></div></div>
-      </div>
-      <div class="card"><div class="card-title"><span class="ct-dot"></span> Subject Comparison</div><div class="chart-wrap" id="sSubjectChart"></div></div>
+      <div class="card"><h3><span class="cdot"></span> My Subjects</h3><div id="sSubjList"></div></div>
     </div>
   </div>
 
-  <!-- TEACHER DASH -->
+  <!-- TEACHER -->
   <div id="teacherDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="tDT(event,'tOv')">Overview</button>
-      <button class="dtab" onclick="tDT(event,'tCode')">Generate Code</button>
-      <button class="dtab" onclick="tDT(event,'tAtt')">View Attendance</button>
-      <button class="dtab" onclick="tDT(event,'tSubj')">Subjects</button>
-      <button class="dtab" onclick="tDT(event,'tCharts')">Analytics</button>
+    <div class="dtabs">
+      <button class="dtab active" onclick="dTab('tOv','teacherDash',this)">Overview</button>
+      <button class="dtab" onclick="dTab('tCode','teacherDash',this)">Generate Code</button>
+      <button class="dtab" onclick="dTab('tAtt','teacherDash',this)">View Attendance</button>
+      <button class="dtab" onclick="dTab('tSubj','teacherDash',this)">Subjects</button>
     </div>
     <div id="tOv" class="dsec active">
       <div class="stats-row" id="tStats"></div>
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Recent Sessions <span class="live-dot" style="margin-left:8px"></span><span style="font-size:11px;color:var(--green);font-family:var(--fm)">LIVE</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Subject</th><th>Date</th><th>Students</th><th>Code</th></tr></thead><tbody id="tSessionsTbl"></tbody></table></div>
+      <div class="card"><h3><span class="cdot"></span> Recent Sessions</h3>
+        <table><thead><tr><th>Subject</th><th>Date</th><th>Students</th><th>Code</th></tr></thead>
+        <tbody id="tSessTbl"><tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions yet</div></td></tr></tbody></table>
       </div>
     </div>
     <div id="tCode" class="dsec">
-      <div class="card" style="max-width:520px;margin:0 auto">
-        <div class="card-title"><span class="ct-dot"></span> Generate Attendance Code</div>
+      <div class="card" style="max-width:480px;margin:0 auto">
+        <h3><span class="cdot"></span> Generate Code</h3>
         <div class="fg"><label>Subject</label><select id="codeSubject"></select></div>
-        <!-- GEO OPTION -->
-        <label class="geo-toggle">
-          <input type="checkbox" id="geoEnabled" onchange="toggleGeoFields()">
-          <div><div style="font-size:14px;font-weight:700">📍 Enable Geo-Location Lock</div><div style="font-size:12px;color:var(--text3)">Students must be within set radius to mark attendance</div></div>
-        </label>
-        <div id="geoFields" style="display:none">
-          <div class="fg"><label>Radius (meters)</label><input type="number" id="geoRadius" value="50" min="10" max="500" placeholder="e.g. 50"></div>
-          <button class="btn btn-outline btn-sm" onclick="getTeacherLocation()" style="margin-bottom:14px">📍 Use My Current Location</button>
-          <div id="geoStatus" style="font-size:12px;color:var(--text3);font-family:var(--fm);margin-bottom:10px"></div>
-          <input type="hidden" id="geoLat"><input type="hidden" id="geoLng">
-        </div>
-        <button class="btn btn-primary btn-full" onclick="generateCode()">⚡ Generate Code + QR</button>
-        <div id="codeDisplay" style="display:none">
-          <div class="code-box">
-            <div style="font-size:11px;font-family:var(--fm);color:var(--text3);letter-spacing:2px;margin-bottom:8px">ATTENDANCE CODE</div>
+        <button class="btn btn-primary btn-full" onclick="generateCode()">⚡ Generate Code</button>
+        <div id="codeDisplay" style="display:none;margin-top:20px">
+          <div class="code-display">
+            <div style="font-size:12px;font-family:var(--fm);color:var(--muted);letter-spacing:2px;margin-bottom:8px">ATTENDANCE CODE</div>
             <div class="code-num" id="liveCode">------</div>
-            <div class="code-timer-txt">Expires in <span id="timerCount">120</span>s</div>
-            <div class="timer-bar-w"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
+            <div class="code-timer">Expires in <span id="timerCount">120</span>s</div>
+            <div class="timer-bar-wrap"><div class="timer-bar" id="timerBar" style="width:100%"></div></div>
           </div>
-          <div id="qrContainer"></div>
-          <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:12px">Show this QR on projector or share the code verbally</p>
+          <p style="text-align:center;font-size:13px;color:var(--muted)">Share this code with students. Expires in 2 minutes.</p>
         </div>
       </div>
     </div>
     <div id="tAtt" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Student Records
-          <div class="ct-actions">
-            <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
-            <button class="btn btn-outline btn-sm" onclick="exportEmail()">✉ Email Report</button>
-          </div>
-        </div>
-        <div class="search-bar">
-          <select id="filterSubject" onchange="loadTAttendance()"><option value="">All Subjects</option></select>
-          <input id="searchStudent" placeholder="Search student..." oninput="filterAttTable()">
-        </div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead><tbody id="tAttTbl"></tbody></table></div>
+      <div class="card"><h3><span class="cdot"></span> Student Records</h3>
+        <div style="margin-bottom:16px"><div class="fg" style="margin:0"><label>Filter Subject</label><select id="filterSubject" onchange="loadTAtt()"><option value="">All Subjects</option></select></div></div>
+        <table><thead><tr><th>Student</th><th>Subject</th><th>Present</th><th>Total</th><th>%</th></tr></thead>
+        <tbody id="tAttTbl"><tr><td colspan="5"><div class="empty"><div class="ei">📊</div>Select subject</div></td></tr></tbody></table>
       </div>
     </div>
     <div id="tSubj" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Manage Subjects</div>
-        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-          <input id="newSubjName" placeholder="Subject name (e.g. Physics)" style="flex:1;min-width:180px;padding:9px 13px;background:var(--bg2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;outline:none">
+      <div class="card"><h3><span class="cdot"></span> Manage Subjects</h3>
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+          <input id="newSubj" placeholder="Subject name e.g. Mathematics" style="flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--fh);font-size:14px;min-width:180px;outline:none">
           <button class="btn btn-primary" onclick="addSubject()">+ Add</button>
         </div>
         <div id="tSubjList"></div>
       </div>
     </div>
-    <div id="tCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Sessions This Week</div><div class="chart-wrap" id="tWeeklyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Students per Subject</div><div class="chart-wrap" id="tSubjChart"></div></div>
-      </div>
-    </div>
   </div>
 
-  <!-- ADMIN DASH -->
+  <!-- ADMIN -->
   <div id="adminDash" class="dsec">
-    <div class="dash-tabs">
-      <button class="dtab active" onclick="aDT(event,'aOv')">Overview</button>
-      <button class="dtab" onclick="aDT(event,'aStudents')">Students</button>
-      <button class="dtab" onclick="aDT(event,'aTeachers')">Teachers</button>
-      <button class="dtab" onclick="aDT(event,'aAtt')">Attendance</button>
-      <button class="dtab" onclick="aDT(event,'aFlags')">🚩 Flags</button>
-      <button class="dtab" onclick="aDT(event,'aLogs')">Activity Logs</button>
-      <button class="dtab" onclick="aDT(event,'aCharts')">Analytics</button>
+    <div class="dtabs">
+      <button class="dtab active" onclick="dTab('aOv','adminDash',this)">Overview</button>
+      <button class="dtab" onclick="dTab('aStudents','adminDash',this)">Students</button>
+      <button class="dtab" onclick="dTab('aTeachers','adminDash',this)">Teachers</button>
+      <button class="dtab" onclick="dTab('aAtt','adminDash',this)">Attendance</button>
     </div>
     <div id="aOv" class="dsec active">
       <div class="stats-row" id="aStats"></div>
       <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Recent Users</div><div id="aRecentUsers"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> <span class="live-dot"></span> Active Sessions</div><div id="aActiveSessions"></div></div>
+        <div class="card"><h3><span class="cdot"></span> Recent Users</h3><div id="aUsers"></div></div>
+        <div class="card"><h3><span class="cdot"></span> Active Sessions</h3><div id="aSess"></div></div>
       </div>
     </div>
-    <div id="aStudents" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Students</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aStudTbl"></tbody></table></div>
-      </div>
+    <div id="aStudents" class="dsec"><div class="card"><h3><span class="cdot"></span> All Students</h3>
+      <table><thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aStudTbl"></tbody></table></div>
     </div>
-    <div id="aTeachers" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Teachers</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aTeachTbl"></tbody></table></div>
-      </div>
+    <div id="aTeachers" class="dsec"><div class="card"><h3><span class="cdot"></span> All Teachers</h3>
+      <table><thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="aTeachTbl"></tbody></table></div>
     </div>
-    <div id="aAtt" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> All Attendance Records</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Teacher</th><th>Date</th><th>Status</th></tr></thead><tbody id="aAttTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aFlags" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> 🚩 Suspicious Activity</div>
-        <div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Subject</th><th>Reason</th><th>Time</th></tr></thead><tbody id="aFlagsTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aLogs" class="dsec">
-      <div class="card">
-        <div class="card-title"><span class="ct-dot"></span> Activity Logs</div>
-        <div class="search-bar"><input id="logSearch" placeholder="Search logs..." oninput="filterLogs()"></div>
-        <div class="tbl-wrap"><table><thead><tr><th>User</th><th>Action</th><th>Details</th><th>IP</th><th>Time</th></tr></thead><tbody id="aLogsTbl"></tbody></table></div>
-      </div>
-    </div>
-    <div id="aCharts" class="dsec">
-      <div class="g2">
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> Monthly Records</div><div class="chart-wrap" id="aMonthlyChart"></div></div>
-        <div class="card"><div class="card-title"><span class="ct-dot"></span> User Distribution</div><div class="chart-wrap" id="aUserChart"></div></div>
-      </div>
+    <div id="aAtt" class="dsec"><div class="card"><h3><span class="cdot"></span> All Attendance</h3>
+      <table><thead><tr><th>Student</th><th>Subject</th><th>Teacher</th><th>Date</th><th>Status</th></tr></thead><tbody id="aAttTbl"></tbody></table></div>
     </div>
   </div>
 </div>
@@ -504,25 +224,18 @@
   <div class="mbox">
     <button class="mclose" onclick="closeModal()">✕</button>
     <div class="mtabs">
-      <button class="mtab active" id="mTabLogin" onclick="switchMTab('login')">Sign In</button>
-      <button class="mtab" id="mTabReg" onclick="switchMTab('register')">Register</button>
+      <button class="mtab active" id="mLogin" onclick="switchTab('login')">Sign In</button>
+      <button class="mtab" id="mReg" onclick="switchTab('register')">Register</button>
     </div>
-    <!-- LOGIN -->
-    <div class="tcont active" id="tcLogin">
-      <div class="mh2">Welcome back</div>
-      <div class="msub">Enter your credentials to continue</div>
+    <div class="tc active" id="tcLogin">
+      <h2>Welcome back</h2><p class="msub">Enter your credentials to continue</p>
       <div class="fg"><label>Email</label><input id="lEmail" type="email" placeholder="you@example.com"></div>
       <div class="fg"><label>Password</label><input id="lPass" type="password" placeholder="••••••••"></div>
       <div class="err" id="loginErr"></div>
       <button class="btn btn-primary btn-full" onclick="login()">Continue →</button>
-      <div style="text-align:center;margin-top:14px">
-        <button class="btn btn-ghost" onclick="switchMTab('face')" style="font-size:12px">🙂 Login with Face Recognition</button>
-      </div>
     </div>
-    <!-- REGISTER -->
-    <div class="tcont" id="tcReg">
-      <div class="mh2">Create account</div>
-      <div class="msub">Join SmartAttend today</div>
+    <div class="tc" id="tcReg">
+      <h2>Create account</h2><p class="msub">Join SmartAttend today</p>
       <div class="frow">
         <div class="fg"><label>Full Name</label><input id="rName" placeholder="John Doe"></div>
         <div class="fg"><label>Account Type</label><select id="rType"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></div>
@@ -532,778 +245,187 @@
       <div class="err" id="regErr"></div>
       <button class="btn btn-primary btn-full" onclick="register()">Create Account →</button>
     </div>
-    <!-- OTP -->
-    <div class="tcont" id="tcOTP">
-      <div class="mh2">Verify email</div>
-      <div class="msub" id="otpSub">OTP sent to your email</div>
+    <div class="tc" id="tcOTP">
+      <h2>Verify email</h2><p class="msub" id="otpSub">OTP sent to your email</p>
       <div class="otp-row">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,0)" onkeydown="otpBack(event,0)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,1)" onkeydown="otpBack(event,1)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,2)" onkeydown="otpBack(event,2)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,3)" onkeydown="otpBack(event,3)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,4)" onkeydown="otpBack(event,4)">
-        <input class="otp-d" maxlength="1" oninput="otpNext(this,5)" onkeydown="otpBack(event,5)">
+        <input class="otp-d" maxlength="1" oninput="otpN(this,0)"><input class="otp-d" maxlength="1" oninput="otpN(this,1)">
+        <input class="otp-d" maxlength="1" oninput="otpN(this,2)"><input class="otp-d" maxlength="1" oninput="otpN(this,3)">
+        <input class="otp-d" maxlength="1" oninput="otpN(this,4)"><input class="otp-d" maxlength="1" oninput="otpN(this,5)">
       </div>
-      <div class="err" id="otpErr"></div>
-      <div class="succ" id="otpSucc"></div>
+      <div class="err" id="otpErr"></div><div class="succ" id="otpSucc"></div>
       <button class="btn btn-primary btn-full" onclick="verifyOTP()">Verify & Continue →</button>
-      <button class="btn btn-ghost btn-full" style="margin-top:6px" onclick="resendOTP()">Resend OTP</button>
-    </div>
-    <!-- FACE LOGIN -->
-    <div class="tcont" id="tcFace">
-      <div class="mh2">Face Login</div>
-      <div class="msub">Position your face in the camera</div>
-      <div class="fg"><label>Email</label><input id="faceEmail" type="email" placeholder="you@example.com"></div>
-      <video id="faceVideo" autoplay playsinline muted style="display:none"></video>
-      <canvas id="faceCanvas" style="display:none"></canvas>
-      <div class="face-status" id="faceStatus">Camera not started</div>
-      <div class="err" id="faceErr"></div>
-      <button class="btn btn-blue btn-full" onclick="startFaceLogin()" style="margin-top:10px">📷 Start Camera</button>
-      <button class="btn btn-primary btn-full" onclick="captureFaceLogin()" id="captureFaceBtn" style="display:none;margin-top:8px">🙂 Capture & Login</button>
-      <button class="btn btn-ghost btn-full" onclick="switchMTab('login')" style="margin-top:6px">← Back to Password Login</button>
+      <button class="btn btn-outline btn-full" style="margin-top:8px" onclick="resendOTP()">Resend OTP</button>
     </div>
   </div>
 </div>
-
-<!-- FACE SETUP MODAL -->
-<div class="modal" id="faceSetupModal">
-  <div class="mbox">
-    <button class="mclose" onclick="document.getElementById('faceSetupModal').classList.remove('open')">✕</button>
-    <div class="mh2">Setup Face Recognition</div>
-    <div class="msub">This enables passwordless login from any device</div>
-    <video id="setupFaceVideo" autoplay playsinline muted></video>
-    <canvas id="setupFaceCanvas" style="display:none"></canvas>
-    <div class="face-status" id="setupFaceStatus">Camera loading...</div>
-    <div style="display:flex;gap:10px;margin-top:12px">
-      <button class="btn btn-primary btn-full" onclick="captureSetupFace()">📸 Capture Face</button>
-      <button class="btn btn-outline" onclick="document.getElementById('faceSetupModal').classList.remove('open')">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div id="toast">—</div>
-
-<!-- PWA INSTALL BANNER -->
-<div id="installBanner">
-  <h4>📱 Install SmartAttend</h4>
-  <p>Add to your home screen for the best experience</p>
-  <div class="ib-btns">
-    <button class="btn btn-primary btn-sm" onclick="installPWA()">Install</button>
-    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('installBanner').style.display='none'">Later</button>
-  </div>
-</div>
-
-<div class="d3-tooltip" id="d3tip" style="display:none"></div>
+<div id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════════════════
-const API = 'https://code-mark-attendance-ja7p.onrender.com';
-let jwt = localStorage.getItem('sa_token') || '';
-let currentUser = JSON.parse(localStorage.getItem('sa_user') || 'null');
-let otpEmail = '', otpAction = '';
-let codeTimer = null;
-let wsConn = null;
-let teacherLat = null, teacherLng = null;
-let deferredInstall = null;
-let qrScanner = null;
-let faceStream = null;
-let allAttRecords = [];
-let allLogs = [];
+const API='https://code-mark-attendance-ja7p.onrender.com';
+let user=null,jwt=localStorage.getItem('sa_token')||'',otpEmail='',codeTimer=null;
 
-// ══════════════════════════════════════════════════════
-// API HELPER
-// ══════════════════════════════════════════════════════
-async function api(path, opts={}) {
-  const h = {'Content-Type':'application/json'};
-  if (jwt) h['Authorization'] = `Bearer ${jwt}`;
-  try {
-    const r = await fetch(API + path, {...opts, headers:{...h, ...opts.headers}});
-    const d = await r.json().catch(() => ({}));
-    return {ok: r.ok, status: r.status, data: d};
-  } catch(e) {
-    return {ok: false, data: {message: 'Network error'}};
-  }
+async function req(path,opts={}){
+  const h={'Content-Type':'application/json'};
+  if(jwt) h['Authorization']=`Bearer ${jwt}`;
+  try{const r=await fetch(API+path,{...opts,headers:{...h,...(opts.headers||{})}});const d=await r.json().catch(()=>({}));return{ok:r.ok,data:d};}
+  catch(e){return{ok:false,data:{message:'Network error'}};}
 }
 
-// ══════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════
-function toast(msg, type='ok') {
-  const t = document.getElementById('toast');
-  const icons = {ok:'✓', err:'✕', warn:'⚠'};
-  t.innerHTML = `<span>${icons[type]||'ℹ'}</span> ${msg}`;
-  t.className = `show ${type}`;
-  clearTimeout(t._to);
-  t._to = setTimeout(() => t.className = '', 3200);
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3000);}
+
+function openModal(tab){document.getElementById('authModal').classList.add('active');switchTab(tab);}
+function closeModal(){document.getElementById('authModal').classList.remove('active');}
+function switchTab(tab){
+  ['tcLogin','tcReg','tcOTP'].forEach(t=>document.getElementById(t).classList.remove('active'));
+  ['mLogin','mReg'].forEach(t=>document.getElementById(t)?.classList.remove('active'));
+  if(tab==='login'){document.getElementById('tcLogin').classList.add('active');document.getElementById('mLogin').classList.add('active');}
+  else if(tab==='register'){document.getElementById('tcReg').classList.add('active');document.getElementById('mReg').classList.add('active');}
+  else if(tab==='otp') document.getElementById('tcOTP').classList.add('active');
 }
 
-// ══════════════════════════════════════════════════════
-// THEME
-// ══════════════════════════════════════════════════════
-function toggleTheme() {
-  const html = document.documentElement;
-  const isDark = html.getAttribute('data-theme') === 'dark';
-  const newTheme = isDark ? 'light' : 'dark';
-  html.setAttribute('data-theme', newTheme);
-  document.querySelector('.theme-toggle').textContent = isDark ? '🌙' : '☀️';
-  localStorage.setItem('sa_theme', newTheme);
-  if (jwt) api('/user/theme', {method:'POST', body: JSON.stringify({theme: newTheme})});
-}
-function initTheme() {
-  const saved = currentUser?.theme || localStorage.getItem('sa_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  document.querySelector('.theme-toggle').textContent = saved === 'dark' ? '☀️' : '🌙';
+function otpN(el,idx){el.value=el.value.replace(/\D/g,'');if(el.value&&idx<5)document.querySelectorAll('.otp-d')[idx+1].focus();}
+function getOTP(){return[...document.querySelectorAll('.otp-d')].map(i=>i.value).join('');}
+function clearOTP(){document.querySelectorAll('.otp-d').forEach(i=>i.value='');document.querySelectorAll('.otp-d')[0].focus();}
+
+async function register(){
+  const name=document.getElementById('rName').value.trim(),email=document.getElementById('rEmail').value.trim().toLowerCase(),pass=document.getElementById('rPass').value,type=document.getElementById('rType').value;
+  const err=document.getElementById('regErr');err.style.display='none';
+  if(!name||!email||!pass){err.textContent='All fields required.';err.style.display='block';return;}
+  if(pass.length<6){err.textContent='Password min 6 chars.';err.style.display='block';return;}
+  const btn=event.target;btn.disabled=true;btn.textContent='Sending OTP...';
+  const r=await req('/register',{method:'POST',body:JSON.stringify({name,email,password:pass,type})});
+  btn.disabled=false;btn.textContent='Create Account →';
+  if(r.ok){otpEmail=email;document.getElementById('otpSub').textContent=`OTP sent to ${email}`;clearOTP();switchTab('otp');toast('OTP sent! Check your email ✉');}
+  else{err.textContent=r.data.message||'Registration failed.';err.style.display='block';}
 }
 
-// ══════════════════════════════════════════════════════
-// WEBSOCKET
-// ══════════════════════════════════════════════════════
-function connectWS() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${proto}://${location.host}/ws`;
-  try {
-    wsConn = new WebSocket(url);
-    wsConn.onopen = () => {
-      document.getElementById('wsStatus').innerHTML = '<span class="live-dot"></span> live';
-      document.getElementById('wsStatus').style.color = 'var(--green)';
-    };
-    wsConn.onclose = () => {
-      document.getElementById('wsStatus').innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block"></span> offline';
-      document.getElementById('wsStatus').style.color = 'var(--text3)';
-      setTimeout(connectWS, 5000);
-    };
-    wsConn.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      if (data.type === 'attendance_marked') {
-        toast(`✓ ${data.student} marked attendance`, 'ok');
-        if (currentUser?.type === 'teacher') loadTeacherDashboard();
-        if (currentUser?.type === 'admin') loadAdminDashboard();
-      }
-      if (data.type === 'code_generated') {
-        toast(`⚡ ${data.teacher} generated code for ${data.subject}`, 'ok');
-      }
-    };
-  } catch(e) {}
+async function login(){
+  const email=document.getElementById('lEmail').value.trim().toLowerCase(),pass=document.getElementById('lPass').value;
+  const err=document.getElementById('loginErr');err.style.display='none';
+  const btn=event.target;btn.disabled=true;btn.textContent='Sending OTP...';
+  const r=await req('/login',{method:'POST',body:JSON.stringify({email,password:pass})});
+  btn.disabled=false;btn.textContent='Continue →';
+  if(r.ok){otpEmail=email;document.getElementById('otpSub').textContent=`OTP sent to ${email}`;clearOTP();switchTab('otp');toast('OTP sent! Check your email ✉');}
+  else{err.textContent=r.data.message||'Invalid credentials.';err.style.display='block';}
 }
 
-// ══════════════════════════════════════════════════════
-// MODAL
-// ══════════════════════════════════════════════════════
-function openAuth(tab) {
-  document.getElementById('authModal').classList.add('open');
-  switchMTab(tab);
-}
-function closeModal() {
-  document.getElementById('authModal').classList.remove('open');
-  stopFaceStream();
-}
-function switchMTab(tab) {
-  ['tcLogin','tcReg','tcOTP','tcFace'].forEach(t => document.getElementById(t).classList.remove('active'));
-  ['mTabLogin','mTabReg'].forEach(t => document.getElementById(t)?.classList.remove('active'));
-  if (tab === 'login') { document.getElementById('tcLogin').classList.add('active'); document.getElementById('mTabLogin').classList.add('active'); }
-  else if (tab === 'register') { document.getElementById('tcReg').classList.add('active'); document.getElementById('mTabReg').classList.add('active'); }
-  else if (tab === 'otp') document.getElementById('tcOTP').classList.add('active');
-  else if (tab === 'face') document.getElementById('tcFace').classList.add('active');
+async function verifyOTP(){
+  const otp=getOTP();const err=document.getElementById('otpErr');const succ=document.getElementById('otpSucc');
+  err.style.display='none';succ.style.display='none';
+  if(otp.length<6){err.textContent='Enter all 6 digits.';err.style.display='block';return;}
+  const r=await req('/verify',{method:'POST',body:JSON.stringify({email:otpEmail,otp})});
+  if(r.ok){succ.textContent='✓ Verified!';succ.style.display='block';jwt=r.data.token;localStorage.setItem('sa_token',jwt);localStorage.setItem('sa_user',JSON.stringify(r.data.user));setTimeout(()=>{closeModal();setUser(r.data.user);},700);}
+  else{err.textContent=r.data.message||'Wrong OTP.';err.style.display='block';clearOTP();}
 }
 
-// ══════════════════════════════════════════════════════
-// OTP INPUTS
-// ══════════════════════════════════════════════════════
-function otpNext(el, idx) {
-  el.value = el.value.replace(/\D/g,'');
-  if (el.value && idx < 5) document.querySelectorAll('.otp-d')[idx+1].focus();
-  if (getOTP().length === 6) verifyOTP();
-}
-function otpBack(e, idx) {
-  if (e.key === 'Backspace' && !e.target.value && idx > 0) document.querySelectorAll('.otp-d')[idx-1].focus();
-}
-function getOTP() { return [...document.querySelectorAll('.otp-d')].map(i=>i.value).join(''); }
-function clearOTP() { document.querySelectorAll('.otp-d').forEach(i=>i.value=''); document.querySelectorAll('.otp-d')[0].focus(); }
+async function resendOTP(){const r=await req('/resend-otp',{method:'POST',body:JSON.stringify({email:otpEmail})});toast(r.ok?'OTP resent!':r.data.message||'Failed',r.ok?'ok':'err');}
 
-// ══════════════════════════════════════════════════════
-// AUTH
-// ══════════════════════════════════════════════════════
-async function register() {
-  const name = document.getElementById('rName').value.trim();
-  const email = document.getElementById('rEmail').value.trim().toLowerCase();
-  const pass = document.getElementById('rPass').value;
-  const type = document.getElementById('rType').value;
-  const err = document.getElementById('regErr');
-  err.style.display = 'none';
-  if (!name || !email || !pass) { err.textContent = 'All fields required.'; err.style.display = 'block'; return; }
-  if (pass.length < 6) { err.textContent = 'Password min 6 characters.'; err.style.display = 'block'; return; }
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Sending OTP...';
-  const r = await api('/register', {method:'POST', body: JSON.stringify({name,email,password:pass,type})});
-  btn.disabled = false; btn.textContent = 'Create Account →';
-  if (r.ok) { otpEmail = email; otpAction = 'register'; document.getElementById('otpSub').textContent = `OTP sent to ${email}`; clearOTP(); switchMTab('otp'); toast('OTP sent! Check your email'); }
-  else { err.textContent = r.data.message || 'Registration failed.'; err.style.display = 'block'; }
+function logout(){user=null;jwt='';localStorage.removeItem('sa_token');localStorage.removeItem('sa_user');document.getElementById('dashboard').style.display='none';document.getElementById('homePage').style.display='flex';document.getElementById('authBtns').style.display='flex';document.getElementById('logoutBtn').style.display='none';document.getElementById('userInfo').style.display='none';if(codeTimer)clearInterval(codeTimer);toast('Logged out');}
+
+function setUser(u){
+  user=u;
+  document.getElementById('homePage').style.display='none';document.getElementById('dashboard').style.display='block';
+  document.getElementById('authBtns').style.display='none';document.getElementById('logoutBtn').style.display='block';
+  document.getElementById('userInfo').style.display='flex';document.getElementById('navName').textContent=u.name;
+  document.getElementById('dashTitle').innerHTML=`Dashboard <span>— ${u.name}</span>`;document.getElementById('dashSub').textContent=u.email;
+  const rb=document.getElementById('roleBadge');rb.textContent=u.type.charAt(0).toUpperCase()+u.type.slice(1);rb.className='role-badge '+u.type;
+  ['studentDash','teacherDash','adminDash'].forEach(d=>document.getElementById(d).classList.remove('active'));
+  if(u.type==='student'){document.getElementById('studentDash').classList.add('active');loadStudent();}
+  else if(u.type==='teacher'){document.getElementById('teacherDash').classList.add('active');loadTeacher();}
+  else if(u.type==='admin'){document.getElementById('adminDash').classList.add('active');loadAdmin();}
 }
 
-async function login() {
-  const email = document.getElementById('lEmail').value.trim().toLowerCase();
-  const pass = document.getElementById('lPass').value;
-  const err = document.getElementById('loginErr');
-  err.style.display = 'none';
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Sending OTP...';
-  const r = await api('/login', {method:'POST', body: JSON.stringify({email, password:pass})});
-  btn.disabled = false; btn.textContent = 'Continue →';
-  if (r.ok) { otpEmail = email; otpAction = 'login'; document.getElementById('otpSub').textContent = `OTP sent to ${email}`; clearOTP(); switchMTab('otp'); toast('OTP sent! Check your email'); }
-  else { err.textContent = r.data.message || 'Invalid credentials.'; err.style.display = 'block'; }
+function dTab(sec,par,btn){
+  const p=document.getElementById(par);
+  p.querySelectorAll('.dsec').forEach(s=>s.classList.remove('active'));
+  p.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(sec).classList.add('active');btn.classList.add('active');
 }
 
-async function verifyOTP() {
-  const otp = getOTP();
-  const err = document.getElementById('otpErr');
-  const succ = document.getElementById('otpSucc');
-  err.style.display = 'none'; succ.style.display = 'none';
-  if (otp.length < 6) { err.textContent = 'Enter all 6 digits.'; err.style.display = 'block'; return; }
-  const r = await api('/verify', {method:'POST', body: JSON.stringify({email: otpEmail, otp})});
-  if (r.ok) {
-    succ.textContent = '✓ Verified! Logging you in...'; succ.style.display = 'block';
-    jwt = r.data.token; localStorage.setItem('sa_token', jwt);
-    localStorage.setItem('sa_user', JSON.stringify(r.data.user));
-    setTimeout(() => { closeModal(); setUser(r.data.user); }, 700);
-  } else { err.textContent = r.data.message || 'Wrong OTP.'; err.style.display = 'block'; clearOTP(); }
+async function loadStudent(){
+  const r=await req('/student/dashboard');if(!r.ok){toast('Failed to load','err');return;}
+  const d=r.data;const avg=d.subjects?.length?Math.round(d.subjects.reduce((a,s)=>a+s.percentage,0)/d.subjects.length):0;
+  document.getElementById('sStats').innerHTML=`
+    <div class="stat-card"><div class="stat-val blue">${d.subjects?.length||0}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val ${avg>=75?'green':avg>=60?'yellow':''}">${avg}%</div><div class="stat-label">Avg Attendance</div></div>
+    <div class="stat-card"><div class="stat-val green">${d.total_present||0}</div><div class="stat-label">Present</div></div>
+    <div class="stat-card"><div class="stat-val">${d.total_classes||0}</div><div class="stat-label">Total Classes</div></div>`;
+  if(d.subjects?.length){
+    document.getElementById('sAttTbl').innerHTML=d.subjects.map(s=>{const p=s.percentage;return`<tr><td><span class="stag">${s.name}</span></td><td>${s.present}</td><td>${s.total}</td><td><div style="font-family:var(--fm);font-weight:700">${p}%</div><div class="att-bar-wrap"><div class="att-bar" style="width:${Math.min(p,100)}%;background:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}"></div></div></td><td><span class="badge ${p>=75?'bg':p>=60?'by':'br'}">${p>=75?'Good':p>=60?'Low':'Critical'}</span></td></tr>`;}).join('');
+    document.getElementById('markSubject').innerHTML=d.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    document.getElementById('sSubjList').innerHTML=`<table><thead><tr><th>Subject</th><th>Teacher</th><th>%</th></tr></thead><tbody>${d.subjects.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.teacher||'—'}</td><td style="font-family:var(--fm);font-weight:700;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')}</tbody></table>`;
+  }else{document.getElementById('sAttTbl').innerHTML='<tr><td colspan="5"><div class="empty"><div class="ei">📭</div>No subjects yet</div></td></tr>';}
 }
 
-async function resendOTP() {
-  const r = await api('/resend-otp', {method:'POST', body: JSON.stringify({email: otpEmail})});
-  if (r.ok) toast('OTP resent!'); else toast(r.data.message || 'Failed', 'err');
+async function markAttendance(){
+  const sid=document.getElementById('markSubject').value,code=document.getElementById('markCode').value.trim().toUpperCase();
+  const err=document.getElementById('markErr'),succ=document.getElementById('markSucc');err.style.display='none';succ.style.display='none';
+  if(!code||code.length!==6){err.textContent='Enter valid 6-digit code.';err.style.display='block';return;}
+  const btn=event.target;btn.disabled=true;btn.textContent='Marking...';
+  const r=await req('/student/mark-attendance',{method:'POST',body:JSON.stringify({subject_id:sid,code})});
+  btn.disabled=false;btn.textContent='✓ Mark Present';
+  if(r.ok){succ.textContent='✓ Attendance marked!';succ.style.display='block';document.getElementById('markCode').value='';loadStudent();}
+  else{err.textContent=r.data.message||'Invalid or expired code.';err.style.display='block';}
 }
 
-function logout() {
-  jwt = ''; currentUser = null;
-  localStorage.removeItem('sa_token'); localStorage.removeItem('sa_user');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('homePage').style.display = 'flex';
-  document.getElementById('authBtns').style.display = 'flex';
-  document.getElementById('logoutBtn').style.display = 'none';
-  document.getElementById('userChip').style.display = 'none';
-  if (codeTimer) clearInterval(codeTimer);
-  stopQRScan(); stopFaceStream();
-  toast('Signed out');
+async function loadTeacher(){
+  const r=await req('/teacher/dashboard');if(!r.ok)return;const d=r.data;
+  document.getElementById('tStats').innerHTML=`
+    <div class="stat-card"><div class="stat-val blue">${d.total_subjects||0}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val green">${d.total_students||0}</div><div class="stat-label">Students</div></div>
+    <div class="stat-card"><div class="stat-val">${d.total_sessions||0}</div><div class="stat-label">Sessions</div></div>
+    <div class="stat-card"><div class="stat-val yellow">${d.today_sessions||0}</div><div class="stat-label">Today</div></div>`;
+  document.getElementById('tSessTbl').innerHTML=d.recent_sessions?.length?d.recent_sessions.map(s=>`<tr><td><span class="stag">${s.subject}</span></td><td style="color:var(--muted)">${s.date}</td><td>${s.count}</td><td style="font-family:var(--fm)">${s.code}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions</div></td></tr>';
+  const subjs=d.subjects||[];
+  ['codeSubject','filterSubject'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">Select Subject</option>'+subjs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');});
+  document.getElementById('tSubjList').innerHTML=subjs.length?`<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>${subjs.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.student_count||0}</td><td>${s.session_count||0}</td><td><button class="btn btn-outline btn-sm" onclick="delSubj(${s.id})">Remove</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="ei">📚</div>No subjects yet</div>';
 }
 
-function goHome() {
-  if (currentUser) return;
-  document.getElementById('homePage').style.display = 'flex';
-  document.getElementById('dashboard').style.display = 'none';
+async function generateCode(){
+  const sid=document.getElementById('codeSubject').value;if(!sid){toast('Select a subject','err');return;}
+  const r=await req('/teacher/generate-code',{method:'POST',body:JSON.stringify({subject_id:sid})});
+  if(r.ok){document.getElementById('liveCode').textContent=r.data.code;document.getElementById('codeDisplay').style.display='block';startTimer(120);toast('✓ Code generated!');}
+  else toast(r.data.message||'Failed','err');
 }
 
-// ══════════════════════════════════════════════════════
-// FACE RECOGNITION
-// ══════════════════════════════════════════════════════
-async function startFaceLogin() {
-  try {
-    faceStream = await navigator.mediaDevices.getUserMedia({video:true});
-    const v = document.getElementById('faceVideo');
-    v.srcObject = faceStream; v.style.display = 'block';
-    document.getElementById('faceStatus').textContent = 'Camera active — position your face';
-    document.getElementById('captureFaceBtn').style.display = 'flex';
-  } catch(e) { toast('Camera access denied', 'err'); }
+function startTimer(sec){
+  if(codeTimer)clearInterval(codeTimer);let left=sec;
+  codeTimer=setInterval(()=>{left--;document.getElementById('timerCount').textContent=left;document.getElementById('timerBar').style.width=(left/sec*100)+'%';
+    if(left<=30)document.getElementById('timerBar').style.background='var(--red)';else if(left<=60)document.getElementById('timerBar').style.background='var(--yellow)';
+    if(left<=0){clearInterval(codeTimer);document.getElementById('codeDisplay').style.display='none';toast('Code expired','err');}
+  },1000);
 }
 
-async function captureFaceLogin() {
-  const email = document.getElementById('faceEmail').value.trim().toLowerCase();
-  if (!email) { document.getElementById('faceErr').textContent = 'Enter your email first.'; document.getElementById('faceErr').style.display = 'block'; return; }
-  const v = document.getElementById('faceVideo');
-  const c = document.getElementById('faceCanvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
-  const faceData = c.toDataURL('image/jpeg', 0.8);
-  const r = await api('/face/login', {method:'POST', body: JSON.stringify({email, face_data: faceData})});
-  if (r.ok) {
-    jwt = r.data.token; localStorage.setItem('sa_token', jwt);
-    localStorage.setItem('sa_user', JSON.stringify(r.data.user));
-    stopFaceStream();
-    closeModal(); setUser(r.data.user);
-    toast('Face verified! Welcome back 👋');
-  } else { document.getElementById('faceErr').textContent = r.data.message; document.getElementById('faceErr').style.display = 'block'; }
+async function loadTAtt(){
+  const sid=document.getElementById('filterSubject').value;
+  const r=await req(sid?`/teacher/attendance?subject_id=${sid}`:'/teacher/attendance');if(!r.ok)return;
+  document.getElementById('tAttTbl').innerHTML=r.data.records?.length?r.data.records.map(rec=>{const p=rec.total>0?Math.round(rec.present/rec.total*100):0;return`<tr><td><strong>${rec.student_name}</strong></td><td><span class="stag">${rec.subject}</span></td><td>${rec.present}</td><td>${rec.total}</td><td style="font-family:var(--fm);font-weight:700;color:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}">${p}%</td></tr>`;}).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">📊</div>No records</div></td></tr>';
 }
 
-async function startFaceSetup() {
-  document.getElementById('faceSetupModal').classList.add('open');
-  try {
-    faceStream = await navigator.mediaDevices.getUserMedia({video:true});
-    document.getElementById('setupFaceVideo').srcObject = faceStream;
-    document.getElementById('setupFaceStatus').textContent = 'Camera active — look at the camera';
-  } catch(e) { toast('Camera access denied', 'err'); }
+async function addSubject(){
+  const name=document.getElementById('newSubj').value.trim();if(!name){toast('Enter subject name','err');return;}
+  const r=await req('/teacher/subjects',{method:'POST',body:JSON.stringify({name})});
+  if(r.ok){toast('Subject added!');document.getElementById('newSubj').value='';loadTeacher();}else toast(r.data.message||'Failed','err');
 }
+async function delSubj(id){if(!confirm('Remove subject?'))return;const r=await req(`/teacher/subjects/${id}`,{method:'DELETE'});if(r.ok){toast('Removed');loadTeacher();}}
 
-async function captureSetupFace() {
-  const v = document.getElementById('setupFaceVideo');
-  const c = document.getElementById('setupFaceCanvas');
-  c.width = v.videoWidth; c.height = v.videoHeight;
-  c.getContext('2d').drawImage(v, 0, 0);
-  const faceData = c.toDataURL('image/jpeg', 0.8);
-  const r = await api('/face/register', {method:'POST', body: JSON.stringify({face_data: faceData})});
-  if (r.ok) { toast('Face registered! You can now use face login ✓'); document.getElementById('faceSetupModal').classList.remove('open'); stopFaceStream(); }
-  else toast(r.data.message || 'Failed', 'err');
+async function loadAdmin(){
+  const r=await req('/admin/dashboard');if(!r.ok)return;const d=r.data;
+  document.getElementById('aStats').innerHTML=`
+    <div class="stat-card"><div class="stat-val blue">${d.total_students}</div><div class="stat-label">Students</div></div>
+    <div class="stat-card"><div class="stat-val green">${d.total_teachers}</div><div class="stat-label">Teachers</div></div>
+    <div class="stat-card"><div class="stat-val yellow">${d.total_subjects}</div><div class="stat-label">Subjects</div></div>
+    <div class="stat-card"><div class="stat-val">${d.total_records}</div><div class="stat-label">Records</div></div>`;
+  document.getElementById('aUsers').innerHTML=d.recent_users?.length?d.recent_users.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><div><strong style="font-size:13px">${u.name}</strong><div style="color:var(--muted);font-size:11px">${u.email}</div></div><span class="badge ${u.type==='student'?'bg':u.type==='teacher'?'by':'br'}">${u.type}</span></div>`).join(''):'<div class="empty"><div class="ei">👤</div>No users</div>';
+  document.getElementById('aSess').innerHTML=d.active_sessions?.length?d.active_sessions.map(s=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px"><div><strong>${s.subject}</strong><div style="color:var(--muted);font-size:11px">${s.teacher}</div></div><span class="badge bg">Active</span></div>`).join(''):'<div class="empty"><div class="ei">🟢</div>No active sessions</div>';
+  document.getElementById('aStudTbl').innerHTML=d.students?.length?d.students.map(s=>`<tr><td><strong>${s.name}</strong></td><td style="color:var(--muted);font-size:12px">${s.email}</td><td>${s.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDel(${s.id})">Remove</button></td></tr>`).join(''):'<tr><td colspan="4"><div class="empty"><div class="ei">👥</div>No students</div></td></tr>';
+  document.getElementById('aTeachTbl').innerHTML=d.teachers?.length?d.teachers.map(t=>`<tr><td><strong>${t.name}</strong></td><td style="color:var(--muted);font-size:12px">${t.email}</td><td>${t.subjects||'—'}</td><td>${t.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDel(${t.id})">Remove</button></td></tr>`).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">👨‍🏫</div>No teachers</div></td></tr>';
+  document.getElementById('aAttTbl').innerHTML=d.attendance?.length?d.attendance.map(a=>`<tr><td>${a.student_name}</td><td><span class="stag">${a.subject}</span></td><td>${a.teacher}</td><td style="font-size:12px;color:var(--muted)">${a.date}</td><td><span class="badge bg">Present</span></td></tr>`).join(''):'<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No records</div></td></tr>';
 }
+async function adminDel(id){if(!confirm('Remove user?'))return;const r=await req(`/admin/users/${id}`,{method:'DELETE'});if(r.ok){toast('Removed');loadAdmin();}else toast('Failed','err');}
 
-function stopFaceStream() {
-  if (faceStream) { faceStream.getTracks().forEach(t=>t.stop()); faceStream = null; }
-  const v = document.getElementById('faceVideo');
-  if (v) { v.style.display = 'none'; v.srcObject = null; }
-  document.getElementById('captureFaceBtn').style.display = 'none';
-}
-
-// ══════════════════════════════════════════════════════
-// SET USER & LOAD DASHBOARD
-// ══════════════════════════════════════════════════════
-function setUser(user) {
-  currentUser = user;
-  document.getElementById('homePage').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('authBtns').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'flex';
-  const chip = document.getElementById('userChip');
-  chip.style.display = 'flex';
-  document.getElementById('navName').textContent = user.name;
-  document.getElementById('navRole').textContent = user.type;
-  document.getElementById('navRole').className = `role-pill ${user.type}`;
-  document.getElementById('dashTitle').innerHTML = `Dashboard <span>— ${user.name}</span>`;
-  document.getElementById('dashSub').textContent = user.email;
-  const rp = document.getElementById('rolePill');
-  rp.textContent = user.type.charAt(0).toUpperCase() + user.type.slice(1);
-  rp.className = `role-pill ${user.type}`;
-  ['studentDash','teacherDash','adminDash'].forEach(d => document.getElementById(d).classList.remove('active'));
-  if (user.type === 'student') { document.getElementById('studentDash').classList.add('active'); loadStudentDashboard(); }
-  else if (user.type === 'teacher') { document.getElementById('teacherDash').classList.add('active'); loadTeacherDashboard(); }
-  else if (user.type === 'admin') { document.getElementById('adminDash').classList.add('active'); loadAdminDashboard(); }
-  initTheme();
-  connectWS();
-  // Offer face setup if not set up
-  if (!user.has_face) setTimeout(() => toast('💡 Tip: Set up Face Recognition for passwordless login! Go to Settings.', 'warn'), 2000);
-}
-
-// ══════════════════════════════════════════════════════
-// DASH TAB HELPERS
-// ══════════════════════════════════════════════════════
-function sDT(e, sec) { tabSwitch(e, sec, 'studentDash'); }
-function tDT(e, sec) { tabSwitch(e, sec, 'teacherDash'); }
-function aDT(e, sec) { tabSwitch(e, sec, 'adminDash'); }
-function tabSwitch(e, sec, parent) {
-  const p = document.getElementById(parent);
-  p.querySelectorAll('.dsec').forEach(s => s.classList.remove('active'));
-  p.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
-  document.getElementById(sec).classList.add('active');
-  e.target.classList.add('active');
-}
-
-// ══════════════════════════════════════════════════════
-// D3 CHARTS
-// ══════════════════════════════════════════════════════
-function d3Bar(containerId, data, xKey, yKey, color='var(--accent)') {
-  const el = document.getElementById(containerId);
-  if (!el || !data.length) { el.innerHTML = '<div class="empty"><div class="ei">📊</div>No data yet</div>'; return; }
-  el.innerHTML = '';
-  const W = el.clientWidth || 320, H = 180, m = {top:10,right:10,bottom:30,left:36};
-  const w = W - m.left - m.right, h = H - m.top - m.bottom;
-  const svg = d3.select(`#${containerId}`).append('svg').attr('width','100%').attr('height',H).attr('viewBox',`0 0 ${W} ${H}`);
-  const g = svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
-  const x = d3.scaleBand().domain(data.map(d=>d[xKey])).range([0,w]).padding(.35);
-  const y = d3.scaleLinear().domain([0, d3.max(data,d=>d[yKey])||1]).nice().range([h,0]);
-  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
-  g.append('g').call(d3.axisLeft(y).ticks(4).tickSize(-w)).call(g=>{ g.select('.domain').remove(); g.selectAll('.tick line').attr('stroke','var(--border)'); g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size',10); });
-  g.selectAll('.bar').data(data).enter().append('rect').attr('class','bar d3-bar')
-    .attr('x',d=>x(d[xKey])).attr('width',x.bandwidth()).attr('y',h).attr('height',0).attr('rx',4).attr('fill',color)
-    .on('mouseover',(ev,d)=>{ const tip=document.getElementById('d3tip'); tip.style.display='block'; tip.style.left=(ev.pageX+10)+'px'; tip.style.top=(ev.pageY-28)+'px'; tip.textContent=`${d[xKey]}: ${d[yKey]}`; })
-    .on('mouseout',()=>document.getElementById('d3tip').style.display='none')
-    .transition().duration(600).attr('y',d=>y(d[yKey])).attr('height',d=>h-y(d[yKey]));
-  g.selectAll('.tick text').attr('fill','var(--text3)').attr('font-size',10);
-}
-
-function d3Donut(containerId, data) {
-  const el = document.getElementById(containerId);
-  if (!el || !data.length) { el.innerHTML = '<div class="empty"><div class="ei">📊</div>No data</div>'; return; }
-  el.innerHTML = '';
-  const W = el.clientWidth || 280, H = 200, R = Math.min(W,H)/2 - 20;
-  const colors = ['var(--accent)','var(--blue)','var(--green)','var(--yellow)','var(--purple)'];
-  const svg = d3.select(`#${containerId}`).append('svg').attr('width','100%').attr('height',H).attr('viewBox',`0 0 ${W} ${H}`);
-  const g = svg.append('g').attr('transform',`translate(${W/2},${H/2})`);
-  const pie = d3.pie().value(d=>d.value).sort(null);
-  const arc = d3.arc().innerRadius(R*.55).outerRadius(R);
-  const arcs = g.selectAll('.arc').data(pie(data)).enter().append('g');
-  arcs.append('path').attr('d',arc).attr('fill',(d,i)=>colors[i%colors.length]).attr('stroke','var(--card)').attr('stroke-width',2)
-    .on('mouseover',(ev,d)=>{ const tip=document.getElementById('d3tip'); tip.style.display='block'; tip.style.left=(ev.pageX+10)+'px'; tip.style.top=(ev.pageY-28)+'px'; tip.textContent=`${d.data.label}: ${d.data.value}`; })
-    .on('mouseout',()=>document.getElementById('d3tip').style.display='none');
-  // Center text
-  g.append('text').attr('text-anchor','middle').attr('dy','0.3em').attr('fill','var(--text)').attr('font-size',14).attr('font-weight',700)
-    .text(data.reduce((a,d)=>a+d.value,0));
-  // Legend
-  const legend = svg.append('g').attr('transform',`translate(${W*.62},${H/2 - data.length*9})`);
-  data.forEach((d,i) => {
-    legend.append('rect').attr('x',0).attr('y',i*18).attr('width',10).attr('height',10).attr('rx',2).attr('fill',colors[i%colors.length]);
-    legend.append('text').attr('x',14).attr('y',i*18+9).attr('fill','var(--text2)').attr('font-size',11).text(d.label);
-  });
-}
-
-// ══════════════════════════════════════════════════════
-// STUDENT
-// ══════════════════════════════════════════════════════
-async function loadStudentDashboard() {
-  const r = await api('/student/dashboard');
-  if (!r.ok) { toast('Failed to load dashboard', 'err'); return; }
-  const d = r.data;
-  const avg = d.subjects?.length ? Math.round(d.subjects.reduce((a,s)=>a+s.percentage,0)/d.subjects.length) : 0;
-  document.getElementById('sStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">📚</div><div class="stat-val">${d.subjects?.length||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat ${avg>=75?'green':avg>=60?'yellow':''}"><div class="stat-icon">📊</div><div class="stat-val">${avg}%</div><div class="stat-label">Avg Attendance</div></div>
-    <div class="stat green"><div class="stat-icon">✓</div><div class="stat-val">${d.total_present||0}</div><div class="stat-label">Total Present</div></div>
-    <div class="stat"><div class="stat-icon">📅</div><div class="stat-val">${d.total_classes||0}</div><div class="stat-label">Total Classes</div></div>
-  `;
-  if (d.subjects?.length) {
-    document.getElementById('sAttTbl').innerHTML = d.subjects.map(s => {
-      const p = s.percentage; const bc = p>=75?'':p>=60?'warn':'danger';
-      const bg = p>=75?'bg':p>=60?'by':'br';
-      const bw = Math.min(p,100);
-      return `<tr>
-        <td><span class="stag">${s.name}</span></td>
-        <td style="color:var(--text3)">${s.teacher||'—'}</td>
-        <td>${s.present}</td><td>${s.total}</td>
-        <td><div style="font-family:var(--fm);font-weight:500">${p}%</div><div class="att-bar-w"><div class="att-bar" style="width:${bw}%;background:${p>=75?'var(--green)':p>=60?'var(--yellow)':'var(--red)'}"></div></div></td>
-        <td><span class="badge ${bg}">${p>=75?'Good':p>=60?'Low':'Critical'}</span></td>
-      </tr>`;
-    }).join('');
-    // Subject dropdown
-    document.getElementById('markSubject').innerHTML = d.subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-    // Subjects list
-    document.getElementById('sSubjList').innerHTML = `<table><thead><tr><th>Subject</th><th>Teacher</th><th>%</th></tr></thead><tbody>${
-      d.subjects.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.teacher||'—'}</td><td style="font-family:var(--fm);font-weight:500;color:${s.percentage>=75?'var(--green)':s.percentage>=60?'var(--yellow)':'var(--red)'}">${s.percentage}%</td></tr>`).join('')
-    }</tbody></table>`;
-    // Charts
-    if (d.weekly_trend) d3Bar('sWeeklyChart', d.weekly_trend, 'date', 'count', 'var(--blue)');
-    if (d.monthly_trend) d3Bar('sMonthlyChart', d.monthly_trend.reverse(), 'month', 'count', 'var(--green)');
-    d3Bar('sSubjectChart', d.subjects.map(s=>({name:s.name.slice(0,8),pct:s.percentage})), 'name', 'pct', 'var(--accent)');
-  } else {
-    document.getElementById('sAttTbl').innerHTML = '<tr><td colspan="6"><div class="empty"><div class="ei">📭</div>No subjects found. Ask your teacher to add subjects.</div></td></tr>';
-    document.getElementById('sSubjList').innerHTML = '<div class="empty"><div class="ei">📚</div>No subjects yet</div>';
-  }
-}
-
-// ── QR SCAN ──
-let scanInterval = null;
-async function startQRScan() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v = document.getElementById('scanVideo');
-    v.srcObject = stream; v.style.display = 'block';
-    document.getElementById('scanPlaceholder').style.display = 'none';
-    document.getElementById('scanOverlay').style.display = 'flex';
-    document.getElementById('startScanBtn').style.display = 'none';
-    document.getElementById('stopScanBtn').style.display = 'flex';
-    qrScanner = stream;
-    // Poll for QR using canvas
-    const c = document.createElement('canvas');
-    scanInterval = setInterval(async () => {
-      if (v.readyState === v.HAVE_ENOUGH_DATA) {
-        c.width = v.videoWidth; c.height = v.videoHeight;
-        c.getContext('2d').drawImage(v, 0, 0);
-        try {
-          const imgData = c.getContext('2d').getImageData(0,0,c.width,c.height);
-          // Use jsQR if available, otherwise prompt manual
-          if (window.jsQR) {
-            const code = jsQR(imgData.data, imgData.width, imgData.height);
-            if (code && code.data) { handleQRCode(code.data); stopQRScan(); }
-          }
-        } catch(e) {}
-      }
-    }, 500);
-    toast('Camera active — point at QR code', 'ok');
-  } catch(e) {
-    toast('Camera not available. Use manual code entry.', 'warn');
-  }
-}
-
-function stopQRScan() {
-  if (qrScanner) { qrScanner.getTracks().forEach(t=>t.stop()); qrScanner = null; }
-  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
-  const v = document.getElementById('scanVideo');
-  v.style.display = 'none'; v.srcObject = null;
-  document.getElementById('scanPlaceholder').style.display = 'block';
-  document.getElementById('scanOverlay').style.display = 'none';
-  document.getElementById('startScanBtn').style.display = 'flex';
-  document.getElementById('stopScanBtn').style.display = 'none';
-}
-
-function handleQRCode(text) {
-  // QR contains the attendance code
-  document.getElementById('markCode').value = text.slice(0,6).toUpperCase();
-  document.getElementById('scanResult').textContent = `✓ Code scanned: ${text.slice(0,6).toUpperCase()}`;
-  document.getElementById('scanResult').style.display = 'block';
-  toast('QR Scanned! Hit Mark Present', 'ok');
-}
-
-async function markAttendance() {
-  const subjectId = document.getElementById('markSubject').value;
-  const code = document.getElementById('markCode').value.trim().toUpperCase();
-  const err = document.getElementById('markErr');
-  const succ = document.getElementById('markSucc');
-  err.style.display = 'none'; succ.style.display = 'none';
-  if (!code || code.length !== 6) { err.textContent = 'Enter a valid 6-digit code.'; err.style.display = 'block'; return; }
-  // Get location
-  let lat = null, lng = null;
-  try {
-    const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}));
-    lat = pos.coords.latitude; lng = pos.coords.longitude;
-  } catch(e) {}
-  const btn = event.target; btn.disabled = true; btn.textContent = 'Marking...';
-  const r = await api('/student/mark-attendance', {method:'POST', body: JSON.stringify({subject_id: subjectId, code, lat, lng})});
-  btn.disabled = false; btn.textContent = '✓ Mark Present';
-  if (r.ok) { succ.textContent = '✓ Attendance marked!'; succ.style.display = 'block'; document.getElementById('markCode').value = ''; document.getElementById('scanResult').style.display = 'none'; loadStudentDashboard(); }
-  else { err.textContent = r.data.message || 'Invalid or expired code.'; err.style.display = 'block'; }
-}
-
-// ══════════════════════════════════════════════════════
-// TEACHER
-// ══════════════════════════════════════════════════════
-async function loadTeacherDashboard() {
-  const r = await api('/teacher/dashboard');
-  if (!r.ok) return;
-  const d = r.data;
-  document.getElementById('tStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">📚</div><div class="stat-val">${d.total_subjects||0}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat green"><div class="stat-icon">👥</div><div class="stat-val">${d.total_students||0}</div><div class="stat-label">Students</div></div>
-    <div class="stat"><div class="stat-icon">⚡</div><div class="stat-val">${d.total_sessions||0}</div><div class="stat-label">Sessions</div></div>
-    <div class="stat yellow"><div class="stat-icon">📅</div><div class="stat-val">${d.today_sessions||0}</div><div class="stat-label">Today</div></div>
-  `;
-  document.getElementById('tSessionsTbl').innerHTML = d.recent_sessions?.length ?
-    d.recent_sessions.map(s=>`<tr><td><span class="stag">${s.subject}</span></td><td style="color:var(--text3)">${s.date}</td><td>${s.count}</td><td style="font-family:var(--fm)">${s.code}</td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">📭</div>No sessions yet</div></td></tr>';
-  // Populate dropdowns
-  const subjs = d.subjects || [];
-  ['codeSubject','filterSubject'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<option value="">Select Subject</option>` + subjs.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  });
-  // Subject list
-  renderTeacherSubjects(subjs);
-  // Charts
-  if (d.weekly_trend) d3Bar('tWeeklyChart', d.weekly_trend, 'date', 'count', 'var(--blue)');
-  if (subjs.length) d3Bar('tSubjChart', subjs.map(s=>({name:s.name.slice(0,8),students:s.student_count})), 'name', 'students', 'var(--green)');
-}
-
-function renderTeacherSubjects(subjs) {
-  document.getElementById('tSubjList').innerHTML = subjs.length ?
-    `<table><thead><tr><th>Subject</th><th>Students</th><th>Sessions</th><th>Actions</th></tr></thead><tbody>${
-      subjs.map(s=>`<tr><td><span class="stag">${s.name}</span></td><td>${s.student_count||0}</td><td>${s.session_count||0}</td><td><button class="btn btn-outline btn-sm" onclick="deleteSubject(${s.id})">Remove</button></td></tr>`).join('')
-    }</tbody></table>` :
-    '<div class="empty"><div class="ei">📚</div>No subjects yet. Add one above!</div>';
-}
-
-function toggleGeoFields() {
-  document.getElementById('geoFields').style.display = document.getElementById('geoEnabled').checked ? 'block' : 'none';
-}
-
-function getTeacherLocation() {
-  const status = document.getElementById('geoStatus');
-  status.textContent = '📍 Getting location...';
-  navigator.geolocation.getCurrentPosition(pos => {
-    teacherLat = pos.coords.latitude; teacherLng = pos.coords.longitude;
-    document.getElementById('geoLat').value = teacherLat;
-    document.getElementById('geoLng').value = teacherLng;
-    status.textContent = `✓ Location set: ${teacherLat.toFixed(4)}, ${teacherLng.toFixed(4)}`;
-    status.style.color = 'var(--green)';
-  }, () => { status.textContent = '✕ Location access denied'; status.style.color = 'var(--red)'; });
-}
-
-async function generateCode() {
-  const subjectId = document.getElementById('codeSubject').value;
-  if (!subjectId) { toast('Select a subject first', 'warn'); return; }
-  const geoOn = document.getElementById('geoEnabled').checked;
-  let lat = null, lng = null, radius = null;
-  if (geoOn) {
-    lat = document.getElementById('geoLat').value || teacherLat;
-    lng = document.getElementById('geoLng').value || teacherLng;
-    radius = document.getElementById('geoRadius').value;
-    if (!lat || !lng) { toast('Get your location first', 'warn'); return; }
-  }
-  const r = await api('/teacher/generate-code', {method:'POST', body: JSON.stringify({subject_id: subjectId, lat, lng, radius})});
-  if (r.ok) {
-    const code = r.data.code;
-    document.getElementById('liveCode').textContent = code;
-    document.getElementById('codeDisplay').style.display = 'block';
-    // Generate QR
-    document.getElementById('qrContainer').innerHTML = '';
-    try {
-      new QRCode(document.getElementById('qrContainer'), {text: code, width: 160, height: 160, colorDark:'#e04c2f', colorLight:'#ffffff'});
-    } catch(e) { document.getElementById('qrContainer').innerHTML = `<div style="font-family:var(--fm);color:var(--text3);font-size:12px">QR not available</div>`; }
-    startCodeTimer(120);
-    if (r.data.geo_enabled) toast('✓ Code generated with Geo-Lock active 📍');
-    else toast('✓ Code generated!');
-  } else toast(r.data.message || 'Failed', 'err');
-}
-
-function startCodeTimer(seconds) {
-  if (codeTimer) clearInterval(codeTimer);
-  let left = seconds;
-  codeTimer = setInterval(() => {
-    left--;
-    document.getElementById('timerCount').textContent = left;
-    document.getElementById('timerBar').style.width = (left/seconds*100) + '%';
-    if (left <= 30) document.getElementById('timerBar').style.background = 'var(--red)';
-    else if (left <= 60) document.getElementById('timerBar').style.background = 'var(--yellow)';
-    if (left <= 0) { clearInterval(codeTimer); document.getElementById('codeDisplay').style.display = 'none'; toast('Code expired', 'warn'); }
-  }, 1000);
-}
-
-async function loadTAttendance() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const url = subjectId ? `/teacher/attendance?subject_id=${subjectId}` : '/teacher/attendance';
-  const r = await api(url);
-  if (!r.ok) return;
-  allAttRecords = r.data.records || [];
-  renderTAttTable(allAttRecords);
-}
-
-function renderTAttTable(records) {
-  document.getElementById('tAttTbl').innerHTML = records.length ?
-    records.map(rec => {
-      const pct = rec.total > 0 ? Math.round(rec.present/rec.total*100) : 0;
-      return `<tr>
-        <td><strong>${rec.student_name}</strong></td>
-        <td><span class="stag">${rec.subject}</span></td>
-        <td>${rec.present}</td><td>${rec.total}</td>
-        <td style="font-family:var(--fm);font-weight:500;color:${pct>=75?'var(--green)':pct>=60?'var(--yellow)':'var(--red)'}">${pct}%</td>
-      </tr>`;
-    }).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📊</div>No records</div></td></tr>';
-}
-
-function filterAttTable() {
-  const q = document.getElementById('searchStudent').value.toLowerCase();
-  renderTAttTable(allAttRecords.filter(r=>r.student_name.toLowerCase().includes(q)));
-}
-
-async function addSubject() {
-  const name = document.getElementById('newSubjName').value.trim();
-  if (!name) { toast('Enter a subject name', 'warn'); return; }
-  const r = await api('/teacher/subjects', {method:'POST', body: JSON.stringify({name})});
-  if (r.ok) { toast('Subject added!'); document.getElementById('newSubjName').value = ''; loadTeacherDashboard(); }
-  else toast(r.data.message || 'Failed', 'err');
-}
-
-async function deleteSubject(id) {
-  if (!confirm('Remove this subject and all its data?')) return;
-  const r = await api(`/teacher/subjects/${id}`, {method:'DELETE'});
-  if (r.ok) { toast('Subject removed'); loadTeacherDashboard(); }
-  else toast('Failed', 'err');
-}
-
-async function exportCSV() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const url = `${API}/teacher/export?format=csv${subjectId?'&subject_id='+subjectId:''}`;
-  const a = document.createElement('a'); a.href = url; a.download = 'attendance.csv'; a.click();
-}
-
-async function exportEmail() {
-  const subjectId = document.getElementById('filterSubject').value;
-  const r = await api('/teacher/export-email', {method:'POST', body: JSON.stringify({subject_id: subjectId || null})});
-  if (r.ok) toast('Report sent to your email ✉');
-  else toast(r.data.message || 'Failed', 'err');
-}
-
-// ══════════════════════════════════════════════════════
-// ADMIN
-// ══════════════════════════════════════════════════════
-async function loadAdminDashboard() {
-  const r = await api('/admin/dashboard');
-  if (!r.ok) return;
-  const d = r.data;
-  document.getElementById('aStats').innerHTML = `
-    <div class="stat blue"><div class="stat-icon">👥</div><div class="stat-val">${d.total_students}</div><div class="stat-label">Students</div></div>
-    <div class="stat green"><div class="stat-icon">👨‍🏫</div><div class="stat-val">${d.total_teachers}</div><div class="stat-label">Teachers</div></div>
-    <div class="stat yellow"><div class="stat-icon">📚</div><div class="stat-val">${d.total_subjects}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat"><div class="stat-icon">✓</div><div class="stat-val">${d.total_records}</div><div class="stat-label">Records</div></div>
-    <div class="stat ${d.total_flags>0?'':''}"><div class="stat-icon">🚩</div><div class="stat-val" style="${d.total_flags>0?'color:var(--red)':''}">${d.total_flags}</div><div class="stat-label">Flags</div></div>
-  `;
-  // Recent users
-  document.getElementById('aRecentUsers').innerHTML = d.recent_users?.length ?
-    d.recent_users.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div><strong style="font-size:13px">${u.name}</strong><div style="color:var(--text3);font-size:11px">${u.email}</div></div>
-      <span class="badge ${u.type==='student'?'bg':u.type==='teacher'?'bb':'bp'}">${u.type}</span>
-    </div>`).join('') : '<div class="empty"><div class="ei">👤</div>No users</div>';
-  // Active sessions
-  document.getElementById('aActiveSessions').innerHTML = d.active_sessions?.length ?
-    d.active_sessions.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div><strong style="font-size:13px">${s.subject}</strong><div style="color:var(--text3);font-size:11px">${s.teacher}</div></div>
-      <span class="badge bg"><span class="live-dot" style="width:6px;height:6px;margin:0"></span> Live</span>
-    </div>`).join('') : '<div class="empty"><div class="ei">🟢</div>No active sessions</div>';
-  // Students table
-  document.getElementById('aStudTbl').innerHTML = d.students?.length ?
-    d.students.map(s=>`<tr><td><strong>${s.name}</strong></td><td style="color:var(--text3);font-size:12px">${s.email}</td><td style="color:var(--text3)">${s.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDelUser(${s.id})">Remove</button></td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">👥</div>No students</div></td></tr>';
-  // Teachers table
-  document.getElementById('aTeachTbl').innerHTML = d.teachers?.length ?
-    d.teachers.map(t=>`<tr><td><strong>${t.name}</strong></td><td style="color:var(--text3);font-size:12px">${t.email}</td><td style="font-size:12px">${t.subjects||'—'}</td><td style="color:var(--text3)">${t.joined}</td><td><button class="btn btn-outline btn-sm" onclick="adminDelUser(${t.id})">Remove</button></td></tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">👨‍🏫</div>No teachers</div></td></tr>';
-  // Attendance table
-  document.getElementById('aAttTbl').innerHTML = d.attendance?.length ?
-    d.attendance.map(a=>`<tr><td>${a.student_name}</td><td><span class="stag">${a.subject}</span></td><td>${a.teacher}</td><td style="color:var(--text3);font-size:12px">${a.date}</td><td><span class="badge bg">Present</span></td></tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No records</div></td></tr>';
-  // Flags
-  document.getElementById('aFlagsTbl').innerHTML = d.flags?.length ?
-    d.flags.map(f=>`<tr><td>${f.student_name||'—'}</td><td><span class="stag">${f.subject_name||'—'}</span></td><td style="color:var(--red)">${f.reason}</td><td style="color:var(--text3);font-size:11px">${f.created_at}</td></tr>`).join('') :
-    '<tr><td colspan="4"><div class="empty"><div class="ei">✅</div>No suspicious activity</div></td></tr>';
-  // Logs
-  allLogs = d.logs || [];
-  renderLogs(allLogs);
-  // Charts
-  if (d.monthly_trend) d3Bar('aMonthlyChart', d.monthly_trend.reverse(), 'month', 'count', 'var(--accent)');
-  d3Donut('aUserChart', [
-    {label:'Students', value: d.total_students},
-    {label:'Teachers', value: d.total_teachers},
-    {label:'Admins', value: 1}
-  ]);
-}
-
-function renderLogs(logs) {
-  document.getElementById('aLogsTbl').innerHTML = logs.length ?
-    logs.map(l=>`<tr>
-      <td><strong>${l.user_name||'—'}</strong></td>
-      <td><span class="badge bb">${l.action}</span></td>
-      <td style="color:var(--text3);font-size:12px">${l.details||'—'}</td>
-      <td style="font-family:var(--fm);font-size:11px;color:var(--text3)">${l.ip_address||'—'}</td>
-      <td style="font-size:11px;color:var(--text3)">${l.created_at}</td>
-    </tr>`).join('') :
-    '<tr><td colspan="5"><div class="empty"><div class="ei">📋</div>No logs</div></td></tr>';
-}
-
-function filterLogs() {
-  const q = document.getElementById('logSearch').value.toLowerCase();
-  renderLogs(allLogs.filter(l => (l.action+l.user_name+l.details).toLowerCase().includes(q)));
-}
-
-async function adminDelUser(id) {
-  if (!confirm('Remove this user? This cannot be undone.')) return;
-  const r = await api(`/admin/users/${id}`, {method:'DELETE'});
-  if (r.ok) { toast('User removed'); loadAdminDashboard(); }
-  else toast('Failed', 'err');
-}
-
-// ══════════════════════════════════════════════════════
-// PWA
-// ══════════════════════════════════════════════════════
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault(); deferredInstall = e;
-  document.getElementById('installBanner').style.display = 'block';
-});
-function installPWA() {
-  if (deferredInstall) { deferredInstall.prompt(); deferredInstall.userChoice.then(()=>{ document.getElementById('installBanner').style.display='none'; }); }
-}
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
-
-// ══════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════
-initTheme();
-if (currentUser && jwt) {
-  setUser(currentUser);
-}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+const su=localStorage.getItem('sa_user');if(su&&jwt)setUser(JSON.parse(su));
 </script>
 </body>
 </html>

@@ -4,5 +4,3 @@ flask-jwt-extended
 flask-limiter
 flask-sock
 gunicorn
-gevent
-gevent-websocket
